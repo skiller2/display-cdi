@@ -90,7 +90,6 @@ void wifi_config_set_icon(lv_obj_t *icon)
     if (wifi_icon_label)
     {
         lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
-        lv_obj_set_style_text_decor(wifi_icon_label, LV_TEXT_DECOR_STRIKETHROUGH, 0);
         lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0xff0000), 0);
     }
 }
