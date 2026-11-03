@@ -155,6 +155,11 @@ void app_main(void)
         lv_obj_align(clock, LV_ALIGN_TOP_RIGHT, -10, 10);
         lv_obj_set_style_text_font(clock, &lv_font_montserrat_20, 0);
 
+        lv_obj_t *wifi_icon = lv_label_create(lv_scr_act());
+        lv_obj_align(wifi_icon, LV_ALIGN_TOP_LEFT, 10, 10);
+        lv_obj_set_style_text_font(wifi_icon, &lv_font_montserrat_20, 0);
+        wifi_config_set_icon(wifi_icon);
+
         lv_timer_create(clock_cb, 1000, clock);
 
         esp_lv_adapter_unlock();

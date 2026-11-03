@@ -4,6 +4,7 @@
 #include "lvgl.h"
 
 lv_obj_t *wifi_config_create(lv_obj_t *parent);
+void wifi_config_set_icon(lv_obj_t *icon);
 void wifi_config_auto_connect(void);
 void wifi_init(void);
 #endif

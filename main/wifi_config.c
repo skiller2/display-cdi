@@ -10,6 +10,7 @@
 
 static lv_obj_t *status_modal;
 static lv_obj_t *status_label;
+static lv_obj_t *wifi_icon_label;
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -19,6 +20,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         ESP_LOGI("WIFI", "Disconnected reason: %d", d ? d->reason : -1);
         if (status_label)
             lv_label_set_text(status_label, "Disconnected");
+        if (wifi_icon_label)
+        {
+            lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
+            lv_obj_set_style_text_decor(wifi_icon_label, LV_TEXT_DECOR_STRIKETHROUGH, 0);
+            lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0xff0000), 0);
+        }
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
@@ -28,6 +35,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         ESP_LOGI("WIFI", "Connected to WiFi, IP: " IPSTR, IP2STR(&ev->ip_info.ip));
         if (status_label)
             lv_label_set_text(status_label, buf);
+        if (wifi_icon_label)
+        {
+            lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
+            lv_obj_set_style_text_decor(wifi_icon_label, LV_TEXT_DECOR_NONE, 0);
+            lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0x0080ff), 0);
+        }
     }
 }
 static lv_obj_t *ssid_ta;
@@ -69,6 +82,17 @@ void wifi_init(void)
 
     wifi_inited = true;
     wifi_config_auto_connect();
+}
+
+void wifi_config_set_icon(lv_obj_t *icon)
+{
+    wifi_icon_label = icon;
+    if (wifi_icon_label)
+    {
+        lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
+        lv_obj_set_style_text_decor(wifi_icon_label, LV_TEXT_DECOR_STRIKETHROUGH, 0);
+        lv_obj_set_style_text_color(wifi_icon_label, lv_color_hex(0xff0000), 0);
+    }
 }
 
 static void ta_focus_cb(lv_event_t *e)
