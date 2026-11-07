@@ -15,13 +15,23 @@
 #include "nvs_flash.h"
 #include "waveshare_rgb_lcd_port.h"
 #include "wifi_config.h"
+#include "display_config.h"
+#include "driver/uart.h"
+#include "esp_timer.h"
+#include "esp_random.h"
+#include "esp_sntp.h"
 
 static esp_lcd_panel_handle_t g_panel;
 
 
-#define INACTIVITY_TIMEOUT_MS 10000
+#define INACTIVITY_TIMEOUT_MS DISPLAY_DEFAULT_INACTIVITY_TIMEOUT_MS
 
+#define UART_NUM UART_NUM_2
+#define UART_BUF_SIZE 512
+#define UART_RX_GPIO 6
+#define UART_TX_GPIO 44  
 static uint32_t last_activity = 0;
+static lv_obj_t *cont_scroll = NULL;
 
 static void reset_inactivity_timer(void)
 {
@@ -56,7 +66,9 @@ static void touch_activity_cb(lv_event_t *e)
 
 static void inactivity_timer_cb(lv_timer_t *timer)
 {
-    if (last_activity && lv_tick_elaps(last_activity) >= INACTIVITY_TIMEOUT_MS) {
+    uint32_t timeout_ms = display_config_get_inactivity_timeout_ms();
+    if (timeout_ms == 0) timeout_ms = INACTIVITY_TIMEOUT_MS;
+    if (last_activity && lv_tick_elaps(last_activity) >= timeout_ms) {
         ESP_LOGI("TOUCH", "Go to sleep due to inactivity");
         waveshare_rgb_lcd_backlight_off();
         last_activity=0;
@@ -88,6 +100,81 @@ static void register_touch_activity(void)
 
     ESP_LOGW("TOUCH", "No pointer input device found");
 }
+
+static void log_line_to_display(const char *text)
+{
+    if (cont_scroll == NULL) {
+        ESP_LOGW("LOGVIEW", "cont_scroll not ready: %s", text);
+        return;
+    }
+
+    lv_obj_t *band = lv_obj_create(cont_scroll);
+    lv_obj_set_width(band, LV_PCT(100));
+    lv_obj_set_height(band, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(band, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(band, 4, 0);
+    lv_obj_set_style_pad_all(band, 4, 0);
+
+    uint32_t r = (esp_random() % 156) + 50;
+    uint32_t g = (esp_random() % 156) + 50;
+    uint32_t bcol = (esp_random() % 156) + 50;
+    lv_obj_set_style_bg_color(band, lv_color_make(r, g, bcol), 0);
+
+    lv_obj_t *lbl = lv_label_create(band);
+    lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(lbl, LV_PCT(100));
+    lv_label_set_text(lbl, text);
+
+    lv_obj_scroll_to_view(band, LV_ANIM_ON);
+}
+
+void uart_init(void)
+{
+    const uart_config_t uart_config = {
+        .baud_rate = 9600,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, UART_BUF_SIZE * 2, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, UART_TX_GPIO, UART_RX_GPIO, -1, -1));
+}
+
+static void uart_poll_timer_cb(lv_timer_t *timer)
+{
+    static uint8_t data[UART_BUF_SIZE];
+    static char line[UART_BUF_SIZE];
+    static size_t line_len = 0;
+    static bool inited = false;
+    (void)timer;
+
+    if (!inited) {
+        uart_init();
+        inited = true;
+        log_line_to_display("UART log viewer started2");
+    }
+
+    int len = uart_read_bytes(UART_NUM, data, UART_BUF_SIZE - 1, 0);
+    if (len <= 0) {
+        return;
+    }
+    for (int i = 0; i < len; i++) {
+        char c = (char)data[i];
+        if (c == '\r' || c == '\n') {
+            if (line_len > 0) {
+                line[line_len] = '\0';
+                log_line_to_display(line);
+                line_len = 0;
+            }
+        } else if (line_len < (UART_BUF_SIZE - 1)) {
+            line[line_len++] = c;
+        }
+    }
+}
+
 
 void app_main(void)
 {
@@ -128,6 +215,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    display_config_load();
     wifi_init();
 
     if (esp_lv_adapter_lock(-1) == ESP_OK)
@@ -140,6 +228,8 @@ void app_main(void)
         wifi_config_create(t_cfg);
         lv_obj_t *t_logs = lv_tabview_add_tab(tv, "Logs");
 
+        lv_tabview_set_act(tv, 2, LV_ANIM_OFF);
+
         lv_obj_t *lbl = lv_label_create(t_dash);
         lv_label_set_text(lbl, "Dashboard");
         lv_obj_center(lbl);
@@ -147,6 +237,12 @@ void app_main(void)
         lbl = lv_label_create(t_logs);
         lv_label_set_text(lbl, "Logs");
         lv_obj_center(lbl);
+
+        cont_scroll = lv_obj_create(t_logs);
+        lv_obj_set_size(cont_scroll, LV_PCT(100), LV_PCT(90));
+        lv_obj_align(cont_scroll, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_obj_set_flex_flow(cont_scroll, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
 
         last_activity = lv_tick_get();
         lv_timer_create(inactivity_timer_cb, 1000, NULL);
@@ -161,6 +257,7 @@ void app_main(void)
         wifi_config_set_icon(wifi_icon);
 
         lv_timer_create(clock_cb, 1000, clock);
+        lv_timer_create(uart_poll_timer_cb, 50, NULL);
 
         esp_lv_adapter_unlock();
     }

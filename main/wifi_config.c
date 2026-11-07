@@ -1,16 +1,31 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
+#include "esp_chip_info.h"
+#include "esp_flash.h"
+#include "esp_heap_caps.h"
+#include "esp_idf_version.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_system.h"
 #include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "wifi_config.h"
+#include "display_config.h"
 
 static lv_obj_t *status_modal;
 static lv_obj_t *status_label;
 static lv_obj_t *wifi_icon_label;
+
+static lv_obj_t *sys_heap_label;
+static lv_obj_t *sys_mem_label;
+static lv_obj_t *sys_flash_label;
+static lv_obj_t *sys_cpu_label;
+static lv_obj_t *sys_chip_label;
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -175,25 +190,154 @@ static void scan_cb(lv_event_t *e)
     free(recs);
 }
 
+static void format_bytes(char *buf, size_t len, uint32_t bytes)
+{
+    if (bytes >= 1024u * 1024u) {
+        snprintf(buf, len, "%u.%02u MB", (unsigned)(bytes / (1024u * 1024u)),
+                 (unsigned)((bytes % (1024u * 1024u)) * 100u / (1024u * 1024u)));
+    } else if (bytes >= 1024u) {
+        snprintf(buf, len, "%u KB", (unsigned)(bytes / 1024u));
+    } else {
+        snprintf(buf, len, "%u B", (unsigned)bytes);
+    }
+}
+
+static void sys_info_timer_cb(lv_timer_t *timer)
+{
+    (void)timer;
+    char line[96];
+    char heap[24];
+    char min_heap[24];
+    char int_heap[24];
+    char psram_heap[24];
+
+    if (sys_heap_label) {
+        format_bytes(heap, sizeof(heap), esp_get_free_heap_size());
+        format_bytes(min_heap, sizeof(min_heap), esp_get_minimum_free_heap_size());
+        snprintf(line, sizeof(line), "Heap free: %s  min ever: %s", heap, min_heap);
+        lv_label_set_text(sys_heap_label, line);
+    }
+
+    if (sys_mem_label) {
+        format_bytes(int_heap, sizeof(int_heap), heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+        format_bytes(psram_heap, sizeof(psram_heap), heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+        snprintf(line, sizeof(line), "Internal free: %s  PSRAM free: %s", int_heap, psram_heap);
+        lv_label_set_text(sys_mem_label, line);
+    }
+
+    if (sys_flash_label) {
+        uint32_t flash_size = 0;
+        esp_err_t err = esp_flash_get_physical_size(NULL, &flash_size);
+        if (err == ESP_OK && flash_size > 0) {
+            format_bytes(heap, sizeof(heap), flash_size);
+            snprintf(line, sizeof(line), "Flash size: %s", heap);
+        } else {
+            snprintf(line, sizeof(line), "Flash size: unavailable (%s)", esp_err_to_name(err));
+        }
+        lv_label_set_text(sys_flash_label, line);
+    }
+
+    if (sys_cpu_label) {
+#if CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
+        static char stats[768];
+        vTaskGetRunTimeStats(stats, sizeof(stats));
+        char *idle0 = strstr(stats, "IDLE0");
+        char *idle1 = strstr(stats, "IDLE1");
+        unsigned long pct0 = 100, pct1 = 100;
+        if (idle0) {
+            char *p = idle0;
+            while (*p && *p != '\t' && *p != ' ') p++;
+            while (*p == '\t' || *p == ' ') p++;
+            while (*p && (*p < '0' || *p > '9') && *p != '\n') p++;
+            if (*p >= '0' && *p <= '9') pct0 = strtoul(p, NULL, 10);
+        }
+        if (idle1) {
+            char *p = idle1;
+            while (*p && *p != '\t' && *p != ' ') p++;
+            while (*p == '\t' || *p == ' ') p++;
+            while (*p && (*p < '0' || *p > '9') && *p != '\n') p++;
+            if (*p >= '0' && *p <= '9') pct1 = strtoul(p, NULL, 10);
+        }
+        snprintf(line, sizeof(line), "CPU util (approx): core0 %lu%% core1 %lu%%",
+                 100ul - (pct0 > 100 ? 100 : pct0),
+                 100ul - (pct1 > 100 ? 100 : pct1));
+#else
+        UBaseType_t tasks = uxTaskGetNumberOfTasks();
+        snprintf(line, sizeof(line), "CPU util: enable CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS (%u tasks)", (unsigned)tasks);
+#endif
+        lv_label_set_text(sys_cpu_label, line);
+    }
+
+    if (sys_chip_label) {
+        esp_chip_info_t info;
+        esp_chip_info(&info);
+        snprintf(line, sizeof(line), "Chip: cores=%d rev=%d  IDF %s",
+                 info.cores, info.revision, esp_get_idf_version());
+        lv_label_set_text(sys_chip_label, line);
+    }
+}
+
 lv_obj_t *wifi_config_create(lv_obj_t *parent)
 {
-    lv_obj_t *c = lv_obj_create(parent);
-    lv_obj_set_size(c, LV_PCT(90), LV_PCT(90));
-    lv_obj_center(c);
-    lv_obj_set_flex_flow(c, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(c, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_t *root = lv_obj_create(parent);
+    lv_obj_set_size(root, LV_PCT(98), LV_PCT(98));
+    lv_obj_center(root);
+    lv_obj_set_flex_flow(root, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(root, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_scrollbar_mode(root, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_style_pad_all(root, 8, 0);
+    lv_obj_set_style_pad_row(root, 6, 0);
 
-    lv_obj_t *l = lv_label_create(c);
-    lv_label_set_text(l, "WiFi SSID");
-    ssid_ta = lv_textarea_create(c);
+    lv_obj_t *title = lv_label_create(root);
+    lv_label_set_text(title, "System");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+
+    sys_chip_label = lv_label_create(root);
+    lv_obj_set_width(sys_chip_label, LV_PCT(100));
+    lv_label_set_long_mode(sys_chip_label, LV_LABEL_LONG_WRAP);
+
+    sys_heap_label = lv_label_create(root);
+    lv_obj_set_width(sys_heap_label, LV_PCT(100));
+    lv_label_set_long_mode(sys_heap_label, LV_LABEL_LONG_WRAP);
+
+    sys_mem_label = lv_label_create(root);
+    lv_obj_set_width(sys_mem_label, LV_PCT(100));
+    lv_label_set_long_mode(sys_mem_label, LV_LABEL_LONG_WRAP);
+
+    sys_flash_label = lv_label_create(root);
+    lv_obj_set_width(sys_flash_label, LV_PCT(100));
+    lv_label_set_long_mode(sys_flash_label, LV_LABEL_LONG_WRAP);
+
+    sys_cpu_label = lv_label_create(root);
+    lv_obj_set_width(sys_cpu_label, LV_PCT(100));
+    lv_label_set_long_mode(sys_cpu_label, LV_LABEL_LONG_WRAP);
+
+    kb = lv_keyboard_create(lv_scr_act());
+    lv_obj_set_size(kb, LV_PCT(100), LV_PCT(40));
+    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+
+    lv_obj_t *inact_ta = display_config_add_ui(root);
+    if (inact_ta) {
+        lv_obj_add_event_cb(inact_ta, ta_focus_cb, LV_EVENT_FOCUSED, NULL);
+        lv_obj_add_event_cb(inact_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, NULL);
+    }
+
+    lv_obj_t *wifi_title = lv_label_create(root);
+    lv_label_set_text(wifi_title, "WiFi");
+    lv_obj_set_style_text_font(wifi_title, &lv_font_montserrat_20, 0);
+
+    lv_obj_t *l = lv_label_create(root);
+    lv_label_set_text(l, "SSID");
+    ssid_ta = lv_textarea_create(root);
     lv_textarea_set_one_line(ssid_ta, true);
     lv_obj_set_width(ssid_ta, LV_PCT(100));
     lv_obj_add_event_cb(ssid_ta, ta_focus_cb, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(ssid_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, NULL);
 
-    l = lv_label_create(c);
+    l = lv_label_create(root);
     lv_label_set_text(l, "Password");
-    pass_ta = lv_textarea_create(c);
+    pass_ta = lv_textarea_create(root);
     lv_textarea_set_password_mode(pass_ta, true);
     lv_textarea_set_one_line(pass_ta, true);
     lv_obj_set_width(pass_ta, LV_PCT(100));
@@ -205,19 +349,29 @@ lv_obj_t *wifi_config_create(lv_obj_t *parent)
     lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_t *btn = lv_button_create(c);
+    lv_obj_t *row = lv_obj_create(root);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_width(row, LV_PCT(100));
+    lv_obj_set_height(row, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(row, 8, 0);
+
+    lv_obj_t *btn = lv_button_create(row);
     lv_obj_t *bl = lv_label_create(btn);
     lv_label_set_text(bl, "Connect");
     lv_obj_add_event_cb(btn, connect_cb, LV_EVENT_CLICKED, NULL);
 
-    lv_obj_t *scan_btn = lv_button_create(c);
+    lv_obj_t *scan_btn = lv_button_create(row);
     lv_obj_t *sl = lv_label_create(scan_btn);
-    lv_label_set_text(sl, "Scan SSIDs");
+    lv_label_set_text(sl, "Scan");
     lv_obj_add_event_cb(scan_btn, scan_cb, LV_EVENT_CLICKED, NULL);
 
-    ssid_list = lv_list_create(c);
-    lv_obj_set_size(ssid_list, LV_PCT(100), LV_PCT(40));
-    return c;
+    ssid_list = lv_list_create(root);
+    lv_obj_set_size(ssid_list, LV_PCT(100), 140);
+
+    sys_info_timer_cb(NULL);
+    lv_timer_create(sys_info_timer_cb, 1000, NULL);
+    return root;
 }
 
 void wifi_config_auto_connect(void)
