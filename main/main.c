@@ -21,6 +21,19 @@
 #include "esp_random.h"
 #include "esp_sntp.h"
 
+//#ifdef HAVE_EEZ_UI
+#include "ui.h"   /* generado por EEZ Studio en main/ui */
+#include "screens.h"
+
+/* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
+ * así se ejecuta dentro de la tarea de LVGL con el lock ya tomado. */
+static void eez_ui_tick_cb(lv_timer_t *t)
+{
+    (void)t;
+    ui_tick();
+}
+//#endif
+
 static esp_lcd_panel_handle_t g_panel;
 
 
@@ -33,6 +46,7 @@ static esp_lcd_panel_handle_t g_panel;
 #define UART_TX_GPIO  43
 static uint32_t last_activity = 0;
 static lv_obj_t *cont_scroll = NULL;
+#define LOG_MAX_LINES 100
 
 static void reset_inactivity_timer(void)
 {
@@ -125,6 +139,11 @@ static void log_line_to_display(const char *text)
     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(lbl, LV_PCT(100));
     lv_label_set_text(lbl, text);
+
+    /* Límite de líneas: sin esto la memoria crece sin fin */
+    while (lv_obj_get_child_count(cont_scroll) > LOG_MAX_LINES) {
+        lv_obj_delete(lv_obj_get_child(cont_scroll, 0));
+    }
 
     lv_obj_scroll_to_view(band, LV_ANIM_ON);
 }
@@ -223,6 +242,26 @@ void app_main(void)
     display_config_load();
     wifi_init();
 
+#ifdef HAVE_EEZ_UI
+    /* Interfaz de EEZ Studio */
+    if (esp_lv_adapter_lock(-1) == ESP_OK)
+    {
+        ui_init();
+        lv_timer_create(eez_ui_tick_cb, 33, NULL);
+
+        /* Logs por UART en el contenedor "lista_logs" diseñado en EEZ */
+        cont_scroll = objects.lista_logs;
+        lv_obj_set_flex_flow(cont_scroll, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
+        lv_timer_create(uart_poll_timer_cb, 50, NULL);
+
+        last_activity = lv_tick_get();
+        lv_timer_create(inactivity_timer_cb, 1000, NULL);
+
+        esp_lv_adapter_unlock();
+    }
+#else
+    /* Interfaz original (pestañas Dashboard / Config / Logs) */
     if (esp_lv_adapter_lock(-1) == ESP_OK)
     {
         lv_obj_t *tv = lv_tabview_create(lv_scr_act());
@@ -236,7 +275,7 @@ void app_main(void)
         lv_tabview_set_act(tv, 2, LV_ANIM_OFF);
 
         lv_obj_t *lbl = lv_label_create(t_dash);
-        lv_label_set_text(lbl, "Dashboard");
+        lv_label_set_text(lbl, "pepito");
         lv_obj_center(lbl);
 
         lbl = lv_label_create(t_logs);
@@ -266,4 +305,5 @@ void app_main(void)
 
         esp_lv_adapter_unlock();
     }
+#endif
 }

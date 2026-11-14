@@ -1,0 +1,7 @@
+Guardá acá el proyecto de EEZ Studio (display-cdi.eez-project).
+
+En EEZ: Settings > Build > Destination folder = ../main/ui
+LVGL version = 9.x, pantalla 800x480.
+Si usás Flow, activá la generación del código del motor de EEZ Flow.
+Después apretá Build y compilá con idf.py build: main.c detecta main/ui/ui.h
+y arranca la interfaz de EEZ en lugar de las pestañas originales.
