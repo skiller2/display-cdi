@@ -13,7 +13,7 @@
 objects_t objects;
 
 static const char *screen_names[] = { "Main", "Screen_A", "Screen_B", "Screen_C" };
-static const char *object_names[] = { "main", "screen_a", "screen_b", "screen_c", "obj0", "obj1", "obj2", "obj3", "obj4", "obj5" };
+static const char *object_names[] = { "main", "screen_a", "screen_b", "screen_c", "obj0", "obj1", "obj2", "lista_logs", "obj3", "obj4", "obj5" };
 
 //
 // Event handlers
@@ -183,6 +183,20 @@ void create_screen_screen_a() {
                     lv_label_set_text_static(obj, "Back");
                 }
             }
+        }
+        {
+            // lista_logs
+            lv_obj_t *obj = lv_obj_create(parent_obj);
+            objects.lista_logs = obj;
+            lv_obj_set_pos(obj, 250, 180);
+            lv_obj_set_size(obj, 300, 200);
+            lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
     }
     

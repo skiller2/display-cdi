@@ -23,6 +23,7 @@
 
 //#ifdef HAVE_EEZ_UI
 #include "ui.h"   /* generado por EEZ Studio en main/ui */
+#include "screens.h"
 
 /* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
  * así se ejecuta dentro de la tarea de LVGL con el lock ya tomado. */
@@ -44,6 +45,7 @@ static esp_lcd_panel_handle_t g_panel;
 #define UART_TX_GPIO 44  
 static uint32_t last_activity = 0;
 static lv_obj_t *cont_scroll = NULL;
+#define LOG_MAX_LINES 100
 
 static void reset_inactivity_timer(void)
 {
@@ -136,6 +138,11 @@ static void log_line_to_display(const char *text)
     lv_label_set_long_mode(lbl, LV_LABEL_LONG_WRAP);
     lv_obj_set_width(lbl, LV_PCT(100));
     lv_label_set_text(lbl, text);
+
+    /* Límite de líneas: sin esto la memoria crece sin fin */
+    while (lv_obj_get_child_count(cont_scroll) > LOG_MAX_LINES) {
+        lv_obj_delete(lv_obj_get_child(cont_scroll, 0));
+    }
 
     lv_obj_scroll_to_view(band, LV_ANIM_ON);
 }
@@ -236,6 +243,12 @@ void app_main(void)
     {
         ui_init();
         lv_timer_create(eez_ui_tick_cb, 33, NULL);
+
+        /* Logs por UART en el contenedor "lista_logs" diseñado en EEZ */
+        cont_scroll = objects.lista_logs;
+        lv_obj_set_flex_flow(cont_scroll, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
+        lv_timer_create(uart_poll_timer_cb, 50, NULL);
 
         last_activity = lv_tick_get();
         lv_timer_create(inactivity_timer_cb, 1000, NULL);
