@@ -21,6 +21,18 @@
 #include "esp_random.h"
 #include "esp_sntp.h"
 
+//#ifdef HAVE_EEZ_UI
+#include "ui.h"   /* generado por EEZ Studio en main/ui */
+
+/* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
+ * así se ejecuta dentro de la tarea de LVGL con el lock ya tomado. */
+static void eez_ui_tick_cb(lv_timer_t *t)
+{
+    (void)t;
+    ui_tick();
+}
+//#endif
+
 static esp_lcd_panel_handle_t g_panel;
 
 
@@ -218,6 +230,20 @@ void app_main(void)
     display_config_load();
     wifi_init();
 
+#ifdef HAVE_EEZ_UI
+    /* Interfaz de EEZ Studio */
+    if (esp_lv_adapter_lock(-1) == ESP_OK)
+    {
+        ui_init();
+        lv_timer_create(eez_ui_tick_cb, 33, NULL);
+
+        last_activity = lv_tick_get();
+        lv_timer_create(inactivity_timer_cb, 1000, NULL);
+
+        esp_lv_adapter_unlock();
+    }
+#else
+    /* Interfaz original (pestañas Dashboard / Config / Logs) */
     if (esp_lv_adapter_lock(-1) == ESP_OK)
     {
         lv_obj_t *tv = lv_tabview_create(lv_scr_act());
@@ -231,7 +257,7 @@ void app_main(void)
         lv_tabview_set_act(tv, 2, LV_ANIM_OFF);
 
         lv_obj_t *lbl = lv_label_create(t_dash);
-        lv_label_set_text(lbl, "Dashboard");
+        lv_label_set_text(lbl, "pepito");
         lv_obj_center(lbl);
 
         lbl = lv_label_create(t_logs);
@@ -261,4 +287,5 @@ void app_main(void)
 
         esp_lv_adapter_unlock();
     }
+#endif
 }
