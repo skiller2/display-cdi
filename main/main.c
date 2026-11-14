@@ -26,10 +26,10 @@ static esp_lcd_panel_handle_t g_panel;
 
 #define INACTIVITY_TIMEOUT_MS DISPLAY_DEFAULT_INACTIVITY_TIMEOUT_MS
 
-#define UART_NUM UART_NUM_2
+#define UART_NUM UART_NUM_1
 #define UART_BUF_SIZE 512
-#define UART_RX_GPIO 6
-#define UART_TX_GPIO 44  
+#define UART_RX_GPIO 43 
+#define UART_TX_GPIO 44 
 static uint32_t last_activity = 0;
 static lv_obj_t *cont_scroll = NULL;
 
@@ -154,13 +154,17 @@ static void uart_poll_timer_cb(lv_timer_t *timer)
     if (!inited) {
         uart_init();
         inited = true;
-        log_line_to_display("UART log viewer started2");
+
+        ESP_LOGI("UART", "UART initialized on port %d, RX=%d, TX=%d", UART_NUM, UART_RX_GPIO, UART_TX_GPIO);
+        log_line_to_display("UART log viewer started ");
     }
 
     int len = uart_read_bytes(UART_NUM, data, UART_BUF_SIZE - 1, 0);
     if (len <= 0) {
         return;
     }
+
+    ESP_LOGI("UART", "Read %d bytes from UART", len);
     for (int i = 0; i < len; i++) {
         char c = (char)data[i];
         if (c == '\r' || c == '\n') {
@@ -189,7 +193,7 @@ void app_main(void)
     ESP_ERROR_CHECK(waveshare_rgb_lcd_backlight_on());
 
     esp_lv_adapter_config_t adapter_config = ESP_LV_ADAPTER_DEFAULT_CONFIG();
-    adapter_config.task_stack_size = 12 * 1024;
+//    adapter_config.task_stack_size = 12 * 1024;
     adapter_config.stack_in_psram = true;
     ESP_ERROR_CHECK(esp_lv_adapter_init(&adapter_config));
 
