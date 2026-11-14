@@ -240,7 +240,7 @@ static void sys_info_timer_cb(lv_timer_t *timer)
     if (sys_cpu_label) {
 #if CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS
         static char stats[768];
-        vTaskGetRunTimeStats(stats, sizeof(stats));
+        vTaskGetRunTimeStats(stats);
         char *idle0 = strstr(stats, "IDLE0");
         char *idle1 = strstr(stats, "IDLE1");
         unsigned long pct0 = 100, pct1 = 100;
@@ -343,11 +343,6 @@ lv_obj_t *wifi_config_create(lv_obj_t *parent)
     lv_obj_set_width(pass_ta, LV_PCT(100));
     lv_obj_add_event_cb(pass_ta, ta_focus_cb, LV_EVENT_FOCUSED, NULL);
     lv_obj_add_event_cb(pass_ta, ta_defocus_cb, LV_EVENT_DEFOCUSED, NULL);
-
-    kb = lv_keyboard_create(lv_scr_act());
-    lv_obj_set_size(kb, LV_PCT(100), LV_PCT(40));
-    lv_obj_align(kb, LV_ALIGN_BOTTOM_MID, 0, 0);
-    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
 
     lv_obj_t *row = lv_obj_create(root);
     lv_obj_remove_style_all(row);
