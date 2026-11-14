@@ -21,7 +21,7 @@
 #include "esp_random.h"
 #include "esp_sntp.h"
 
-//#ifdef HAVE_EEZ_UI
+#ifdef HAVE_EEZ_UI
 #include "ui.h"   /* generado por EEZ Studio en main/ui */
 #include "screens.h"
 
@@ -32,7 +32,7 @@ static void eez_ui_tick_cb(lv_timer_t *t)
     (void)t;
     ui_tick();
 }
-//#endif
+#endif
 
 static esp_lcd_panel_handle_t g_panel;
 
