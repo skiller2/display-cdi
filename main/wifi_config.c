@@ -70,7 +70,17 @@ void wifi_init(void)
         return;
     esp_netif_create_default_wifi_sta();
     wifi_init_config_t wcfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&wcfg));
+    ESP_LOGI("WIFI", "init: free heap %u, min ever %u, internal DRAM %u",
+             (unsigned)esp_get_free_heap_size(),
+             (unsigned)esp_get_minimum_free_heap_size(),
+             (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    esp_err_t err = esp_wifi_init(&wcfg);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE("WIFI", "esp_wifi_init failed: %s; Wi-Fi unavailable",
+                 esp_err_to_name(err));
+        return;
+    }
 
 
     ESP_ERROR_CHECK(
