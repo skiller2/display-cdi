@@ -26,10 +26,11 @@ static esp_lcd_panel_handle_t g_panel;
 
 #define INACTIVITY_TIMEOUT_MS DISPLAY_DEFAULT_INACTIVITY_TIMEOUT_MS
 
-#define UART_NUM UART_NUM_1
+#define UART_PORT     UART_NUM_2
 #define UART_BUF_SIZE 512
-#define UART_RX_GPIO 43 
-#define UART_TX_GPIO 44 
+/* UART2 header pins on ESP32-S3-Touch-LCD-7 (adjust if your wiring differs) */
+#define UART_RX_GPIO  44
+#define UART_TX_GPIO  43
 static uint32_t last_activity = 0;
 static lv_obj_t *cont_scroll = NULL;
 
@@ -138,9 +139,9 @@ void uart_init(void)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM, UART_BUF_SIZE * 2, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, UART_TX_GPIO, UART_RX_GPIO, -1, -1));
+    ESP_ERROR_CHECK(uart_driver_install(UART_PORT, UART_BUF_SIZE * 2, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(UART_PORT, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(UART_PORT, UART_TX_GPIO, UART_RX_GPIO, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 }
 
 static void uart_poll_timer_cb(lv_timer_t *timer)
@@ -155,11 +156,11 @@ static void uart_poll_timer_cb(lv_timer_t *timer)
         uart_init();
         inited = true;
 
-        ESP_LOGI("UART", "UART initialized on port %d, RX=%d, TX=%d", UART_NUM, UART_RX_GPIO, UART_TX_GPIO);
+        ESP_LOGI("UART", "UART initialized on port %d, RX=%d, TX=%d", (int)UART_PORT, UART_RX_GPIO, UART_TX_GPIO);
         log_line_to_display("UART log viewer started ");
     }
 
-    int len = uart_read_bytes(UART_NUM, data, UART_BUF_SIZE - 1, 0);
+    int len = uart_read_bytes(UART_PORT, data, UART_BUF_SIZE - 1, 0);
     if (len <= 0) {
         return;
     }
