@@ -12,24 +12,17 @@ extern "C" {
 enum ScreensEnum {
     _SCREEN_ID_FIRST = 1,
     SCREEN_ID_MAIN = 1,
-    SCREEN_ID_SCREEN_A = 2,
-    SCREEN_ID_SCREEN_B = 3,
-    SCREEN_ID_SCREEN_C = 4,
-    _SCREEN_ID_LAST = 4
+    SCREEN_ID_LOGS = 2,
+    _SCREEN_ID_LAST = 2
 };
 
 typedef struct _objects_t {
     lv_obj_t *main;
-    lv_obj_t *screen_a;
-    lv_obj_t *screen_b;
-    lv_obj_t *screen_c;
+    lv_obj_t *logs;
     lv_obj_t *obj0;
     lv_obj_t *obj1;
-    lv_obj_t *obj2;
     lv_obj_t *lista_logs;
-    lv_obj_t *obj3;
-    lv_obj_t *obj4;
-    lv_obj_t *obj5;
+    lv_obj_t *enviar_uart;
 } objects_t;
 
 extern objects_t objects;
@@ -37,14 +30,8 @@ extern objects_t objects;
 void create_screen_main();
 void tick_screen_main();
 
-void create_screen_screen_a();
-void tick_screen_screen_a();
-
-void create_screen_screen_b();
-void tick_screen_screen_b();
-
-void create_screen_screen_c();
-void tick_screen_screen_c();
+void create_screen_logs();
+void tick_screen_logs();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

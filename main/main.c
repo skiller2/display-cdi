@@ -199,6 +199,15 @@ static void uart_poll_timer_cb(lv_timer_t *timer)
     }
 }
 
+static void enviar_uart_cb(lv_event_t *e)
+{
+    (void)e;
+    static const char msg[] = "TEST\r\n";
+    int n = uart_write_bytes(UART_PORT, msg, sizeof(msg) - 1);
+    ESP_LOGI("UART", "Enviado TEST (%d bytes)", n);
+    log_line_to_display(n > 0 ? ">> TEST enviado" : ">> Error enviando TEST");
+}
+
 
 void app_main(void)
 {
@@ -254,6 +263,9 @@ void app_main(void)
         lv_obj_set_flex_flow(cont_scroll, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
         lv_timer_create(uart_poll_timer_cb, 50, NULL);
+
+        /* Botón "enviar_uart" de EEZ: manda TEST por la UART */
+        lv_obj_add_event_cb(objects.enviar_uart, enviar_uart_cb, LV_EVENT_CLICKED, NULL);
 
         last_activity = lv_tick_get();
         lv_timer_create(inactivity_timer_cb, 1000, NULL);

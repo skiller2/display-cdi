@@ -12,8 +12,8 @@
 
 objects_t objects;
 
-static const char *screen_names[] = { "Main", "Screen_A", "Screen_B", "Screen_C" };
-static const char *object_names[] = { "main", "screen_a", "screen_b", "screen_c", "obj0", "obj1", "obj2", "lista_logs", "obj3", "obj4", "obj5" };
+static const char *screen_names[] = { "Main", "Logs" };
+static const char *object_names[] = { "main", "logs", "obj0", "obj1", "lista_logs", "enviar_uart" };
 
 //
 // Event handlers
@@ -32,51 +32,7 @@ static void event_handler_cb_main_obj0(lv_event_t *e) {
     }
 }
 
-static void event_handler_cb_screen_a_obj1(lv_event_t *e) {
-    lv_event_code_t event = lv_event_get_code(e);
-    void *flowState = lv_event_get_user_data(e);
-    (void)flowState;
-    
-    if (event == LV_EVENT_CLICKED) {
-        e->user_data = (void *)0;
-        flowPropagateValueLVGLEvent(flowState, 4, 0, e);
-    }
-}
-
-static void event_handler_cb_screen_a_obj2(lv_event_t *e) {
-    lv_event_code_t event = lv_event_get_code(e);
-    void *flowState = lv_event_get_user_data(e);
-    (void)flowState;
-    
-    if (event == LV_EVENT_CLICKED) {
-        e->user_data = (void *)0;
-        flowPropagateValueLVGLEvent(flowState, 6, 0, e);
-    }
-}
-
-static void event_handler_cb_screen_b_obj3(lv_event_t *e) {
-    lv_event_code_t event = lv_event_get_code(e);
-    void *flowState = lv_event_get_user_data(e);
-    (void)flowState;
-    
-    if (event == LV_EVENT_CLICKED) {
-        e->user_data = (void *)0;
-        flowPropagateValueLVGLEvent(flowState, 4, 0, e);
-    }
-}
-
-static void event_handler_cb_screen_b_obj4(lv_event_t *e) {
-    lv_event_code_t event = lv_event_get_code(e);
-    void *flowState = lv_event_get_user_data(e);
-    (void)flowState;
-    
-    if (event == LV_EVENT_CLICKED) {
-        e->user_data = (void *)0;
-        flowPropagateValueLVGLEvent(flowState, 6, 0, e);
-    }
-}
-
-static void event_handler_cb_screen_c_obj5(lv_event_t *e) {
+static void event_handler_cb_logs_obj1(lv_event_t *e) {
     lv_event_code_t event = lv_event_get_code(e);
     void *flowState = lv_event_get_user_data(e);
     (void)flowState;
@@ -103,7 +59,7 @@ void create_screen_main() {
         {
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.obj0 = obj;
-            lv_obj_set_pos(obj, 124, 270);
+            lv_obj_set_pos(obj, 0, 430);
             lv_obj_set_size(obj, 100, 50);
             lv_obj_add_event_cb(obj, event_handler_cb_main_obj0, LV_EVENT_ALL, flowState);
             {
@@ -113,16 +69,16 @@ void create_screen_main() {
                     lv_obj_set_pos(obj, 0, 0);
                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                     lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text_static(obj, "Screen A");
+                    lv_label_set_text_static(obj, "LOGS");
                 }
             }
         }
         {
             lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 261, 140);
+            lv_obj_set_pos(obj, 350, 0);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             add_style_screen_title(obj);
-            lv_label_set_text_static(obj, "This is the Main Screen");
+            lv_label_set_text_static(obj, "CDI 54 2");
         }
     }
     
@@ -134,45 +90,28 @@ void tick_screen_main() {
     (void)flowState;
 }
 
-void create_screen_screen_a() {
+void create_screen_logs() {
     void *flowState = getFlowState(0, 1);
     (void)flowState;
     lv_obj_t *obj = lv_obj_create(0);
-    objects.screen_a = obj;
+    objects.logs = obj;
     lv_obj_set_pos(obj, 0, 0);
     lv_obj_set_size(obj, 800, 480);
     {
         lv_obj_t *parent_obj = obj;
         {
             lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 282, 140);
+            lv_obj_set_pos(obj, 16, 16);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
             add_style_screen_title(obj);
-            lv_label_set_text_static(obj, "This is the Screen A");
+            lv_label_set_text_static(obj, "Logs");
         }
         {
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.obj1 = obj;
-            lv_obj_set_pos(obj, 50, 380);
+            lv_obj_set_pos(obj, 684, 414);
             lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_screen_a_obj1, LV_EVENT_ALL, flowState);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    lv_obj_t *obj = lv_label_create(parent_obj);
-                    lv_obj_set_pos(obj, 0, 0);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text_static(obj, "Screen B");
-                }
-            }
-        }
-        {
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.obj2 = obj;
-            lv_obj_set_pos(obj, 650, 380);
-            lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_screen_a_obj2, LV_EVENT_ALL, flowState);
+            lv_obj_add_event_cb(obj, event_handler_cb_logs_obj1, LV_EVENT_ALL, flowState);
             {
                 lv_obj_t *parent_obj = obj;
                 {
@@ -188,8 +127,8 @@ void create_screen_screen_a() {
             // lista_logs
             lv_obj_t *obj = lv_obj_create(parent_obj);
             objects.lista_logs = obj;
-            lv_obj_set_pos(obj, 250, 180);
-            lv_obj_set_size(obj, 300, 200);
+            lv_obj_set_pos(obj, 74, 43);
+            lv_obj_set_size(obj, 610, 371);
             lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -198,128 +137,40 @@ void create_screen_screen_a() {
             lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
+        {
+            // enviar_uart
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.enviar_uart = obj;
+            lv_obj_set_pos(obj, 568, 415);
+            lv_obj_set_size(obj, 100, 50);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "Enviar UART");
+                }
+            }
+        }
     }
     
-    tick_screen_screen_a();
+    tick_screen_logs();
 }
 
-void tick_screen_screen_a() {
+void tick_screen_logs() {
     void *flowState = getFlowState(0, 1);
-    (void)flowState;
-}
-
-void create_screen_screen_b() {
-    void *flowState = getFlowState(0, 2);
-    (void)flowState;
-    lv_obj_t *obj = lv_obj_create(0);
-    objects.screen_b = obj;
-    lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 800, 480);
-    {
-        lv_obj_t *parent_obj = obj;
-        {
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 282, 140);
-            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            add_style_screen_title(obj);
-            lv_label_set_text_static(obj, "This is the Screen B");
-        }
-        {
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.obj3 = obj;
-            lv_obj_set_pos(obj, 50, 380);
-            lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_screen_b_obj3, LV_EVENT_ALL, flowState);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    lv_obj_t *obj = lv_label_create(parent_obj);
-                    lv_obj_set_pos(obj, 0, 0);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text_static(obj, "Screen C");
-                }
-            }
-        }
-        {
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.obj4 = obj;
-            lv_obj_set_pos(obj, 650, 380);
-            lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_screen_b_obj4, LV_EVENT_ALL, flowState);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    lv_obj_t *obj = lv_label_create(parent_obj);
-                    lv_obj_set_pos(obj, 0, 0);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text_static(obj, "Back");
-                }
-            }
-        }
-    }
-    
-    tick_screen_screen_b();
-}
-
-void tick_screen_screen_b() {
-    void *flowState = getFlowState(0, 2);
-    (void)flowState;
-}
-
-void create_screen_screen_c() {
-    void *flowState = getFlowState(0, 3);
-    (void)flowState;
-    lv_obj_t *obj = lv_obj_create(0);
-    objects.screen_c = obj;
-    lv_obj_set_pos(obj, 0, 0);
-    lv_obj_set_size(obj, 800, 480);
-    {
-        lv_obj_t *parent_obj = obj;
-        {
-            lv_obj_t *obj = lv_label_create(parent_obj);
-            lv_obj_set_pos(obj, 283, 140);
-            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            add_style_screen_title(obj);
-            lv_label_set_text_static(obj, "This is the Screen C");
-        }
-        {
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.obj5 = obj;
-            lv_obj_set_pos(obj, 650, 380);
-            lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_screen_c_obj5, LV_EVENT_ALL, flowState);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    lv_obj_t *obj = lv_label_create(parent_obj);
-                    lv_obj_set_pos(obj, 0, 0);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text_static(obj, "Back");
-                }
-            }
-        }
-    }
-    
-    tick_screen_screen_c();
-}
-
-void tick_screen_screen_c() {
-    void *flowState = getFlowState(0, 3);
     (void)flowState;
 }
 
 typedef void (*tick_screen_func_t)();
 tick_screen_func_t tick_screen_funcs[] = {
     tick_screen_main,
-    tick_screen_screen_a,
-    tick_screen_screen_b,
-    tick_screen_screen_c,
+    tick_screen_logs,
 };
 void tick_screen(int screen_index) {
-    if (screen_index >= 0 && screen_index < 4) {
+    if (screen_index >= 0 && screen_index < 2) {
         tick_screen_funcs[screen_index]();
     }
 }
@@ -429,7 +280,5 @@ eez_flow_init_fonts(fonts, sizeof(fonts) / sizeof(ext_font_desc_t));
     
     // Create screens
     create_screen_main();
-    create_screen_screen_a();
-    create_screen_screen_b();
-    create_screen_screen_c();
+    create_screen_logs();
 }
