@@ -13,7 +13,7 @@
 objects_t objects;
 
 static const char *screen_names[] = { "Main", "Logs" };
-static const char *object_names[] = { "main", "logs", "obj0", "obj1", "lista_logs", "enviar_uart" };
+static const char *object_names[] = { "main", "logs", "obj0", "enviar_ack", "enviar_reset", "enviar_test", "obj1", "lista_logs" };
 
 //
 // Event handlers
@@ -80,6 +80,57 @@ void create_screen_main() {
             add_style_screen_title(obj);
             lv_label_set_text_static(obj, "CDI 54 2");
         }
+        {
+            // enviar_ack
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.enviar_ack = obj;
+            lv_obj_set_pos(obj, 689, 330);
+            lv_obj_set_size(obj, 100, 50);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "ACK");
+                }
+            }
+        }
+        {
+            // enviar_reset
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.enviar_reset = obj;
+            lv_obj_set_pos(obj, 688, 380);
+            lv_obj_set_size(obj, 100, 50);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "RESET");
+                }
+            }
+        }
+        {
+            // enviar_test
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.enviar_test = obj;
+            lv_obj_set_pos(obj, 688, 430);
+            lv_obj_set_size(obj, 100, 50);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "TEST");
+                }
+            }
+        }
     }
     
     tick_screen_main();
@@ -136,23 +187,6 @@ void create_screen_logs() {
             lv_obj_set_style_bg_opa(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
-        }
-        {
-            // enviar_uart
-            lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.enviar_uart = obj;
-            lv_obj_set_pos(obj, 568, 415);
-            lv_obj_set_size(obj, 100, 50);
-            {
-                lv_obj_t *parent_obj = obj;
-                {
-                    lv_obj_t *obj = lv_label_create(parent_obj);
-                    lv_obj_set_pos(obj, 0, 0);
-                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-                    lv_label_set_text_static(obj, "Enviar UART");
-                }
-            }
         }
     }
     

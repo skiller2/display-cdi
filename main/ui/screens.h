@@ -20,9 +20,11 @@ typedef struct _objects_t {
     lv_obj_t *main;
     lv_obj_t *logs;
     lv_obj_t *obj0;
+    lv_obj_t *enviar_ack;
+    lv_obj_t *enviar_reset;
+    lv_obj_t *enviar_test;
     lv_obj_t *obj1;
     lv_obj_t *lista_logs;
-    lv_obj_t *enviar_uart;
 } objects_t;
 
 extern objects_t objects;
