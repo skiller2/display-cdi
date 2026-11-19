@@ -25,6 +25,7 @@
 
 #ifdef HAVE_EEZ_UI
 #include "ui.h"   /* generado por EEZ Studio en main/ui */
+#include "sys_info.h"
 #include "screens.h"
 
 /* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
@@ -403,6 +404,7 @@ void app_main(void)
     {
         ui_init();
         lv_timer_create(eez_ui_tick_cb, 33, NULL);
+        sys_info_start();
 
         /* Logs por UART en el contenedor "lista_logs" diseñado en EEZ */
         cont_scroll = objects.lista_logs;
