@@ -1,9 +1,9 @@
 #include <stdlib.h>
+#include <string.h>
 #include "lvgl.h"
 #include "texts_es.h"
 #include "panel_model.h"
 #include "panel_ui.h"
-#include "ui/images.h"
 #include "ui/screens.h"
 
 #define REFRESH_MS      200
@@ -16,19 +16,25 @@ static void show(lv_obj_t *o, bool on)
     else    lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void set_img(lv_obj_t *o, const lv_image_dsc_t *src)
+/* Íconos = símbolos de LVGL (Montserrat 32) en labels; color por estado */
+#define COL_OK   0x4caf50
+#define COL_BAD  0xdc3545
+
+static void set_sym(lv_obj_t *o, const char *sym, uint32_t color)
 {
-    if (o && lv_image_get_src(o) != src) lv_image_set_src(o, src);
+    if (!o) return;
+    if (strcmp(lv_label_get_text(o), sym) != 0) lv_label_set_text(o, sym);
+    lv_obj_set_style_text_color(o, lv_color_hex(color), 0);
 }
 
-static const lv_image_dsc_t *battery_img(int pct)
+static void battery_sym(int pct, const char **sym, uint32_t *col)
 {
     /* mismos rangos que NavBar.jsx */
-    if (pct == 100) return &img_st_battery100;
-    if (pct >= 75)  return &img_st_battery75;
-    if (pct >= 50)  return &img_st_battery50;
-    if (pct > 1 && pct <= 25) return &img_st_battery25;
-    return &img_st_batteryfault;
+    if (pct == 100)           { *sym = LV_SYMBOL_BATTERY_FULL;  *col = COL_OK; }
+    else if (pct >= 75)       { *sym = LV_SYMBOL_BATTERY_3;     *col = COL_OK; }
+    else if (pct >= 50)       { *sym = LV_SYMBOL_BATTERY_2;     *col = 0xe0a800; }
+    else if (pct > 1 && pct <= 25) { *sym = LV_SYMBOL_BATTERY_1; *col = 0xfd7e14; }
+    else                      { *sym = LV_SYMBOL_BATTERY_EMPTY; *col = COL_BAD; }
 }
 
 static void module_dot(lv_obj_t *o, int st)
@@ -47,9 +53,11 @@ static void refresh_status(const panel_status_t *s)
     show(objects.st_test,        s->test);
     show(objects.st_extincion,   s->extincion);
 
-    set_img(objects.st_bateria,     battery_img(s->bateria));
-    set_img(objects.st_alimentacion, s->alimentacion ? &img_st_powersupplynormal : &img_st_powersupplyfault);
-    set_img(objects.st_red,          s->red ? &img_st_networknormal : &img_st_networkfault);
+    const char *bsym; uint32_t bcol;
+    battery_sym(s->bateria, &bsym, &bcol);
+    set_sym(objects.st_bateria,      bsym, bcol);
+    set_sym(objects.st_alimentacion, LV_SYMBOL_CHARGE, s->alimentacion ? COL_OK : COL_BAD);
+    set_sym(objects.st_red,          LV_SYMBOL_WIFI,   s->red ? COL_OK : COL_BAD);
 
     module_dot(objects.st_mod_i1, s->modulo_i1);
     module_dot(objects.st_mod_i2, s->modulo_i2);
@@ -74,7 +82,7 @@ static const struct { uint32_t bg, border, text; } BAR_COLORS[] = {
 
 typedef struct {
     bar_color_t           color;
-    const lv_image_dsc_t *icon;
+    const char           *icon;   /* LV_SYMBOL_* */
     int                   text;   /* índice en TXT_STATUS */
     int                   rank;   /* orden: menor = más arriba */
 } bar_look_t;
@@ -83,16 +91,16 @@ typedef struct {
 static bar_look_t line_look(int st)
 {
     switch (st) {
-    case 2:  return (bar_look_t){ C_RED,    &img_st_bell,       2, 0 };
-    case 19: return (bar_look_t){ C_RED,    &img_bar_robbery,   2, 0 };
-    case 3:  return (bar_look_t){ C_ORANGE, &img_st_bell,       3, 1 };
-    case 4:  return (bar_look_t){ C_RED,    &img_st_bell,       4, 2 };
+    case 2:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,       2, 0 };
+    case 19: return (bar_look_t){ C_RED,    LV_SYMBOL_EYE_OPEN,   2, 0 };
+    case 3:  return (bar_look_t){ C_ORANGE, LV_SYMBOL_BELL,       3, 1 };
+    case 4:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,       4, 2 };
     case 21: case 22: case 23: case 24: case 25: case 26:
-             return (bar_look_t){ C_YELLOW, &img_st_bell,       2, 3 };
-    case 6:  return (bar_look_t){ C_YELLOW, &img_st_fault,      6, 4 };
-    case 7:  return (bar_look_t){ C_YELLOW, &img_st_fault,      7, 5 };
-    case 8:  return (bar_look_t){ C_YELLOW, &img_st_disconnect, 8, 6 };
-    default: return (bar_look_t){ C_GREEN,  &img_bar_check,     0, 7 };
+             return (bar_look_t){ C_YELLOW, LV_SYMBOL_BELL,       2, 3 };
+    case 6:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,      6, 4 };
+    case 7:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,      7, 5 };
+    case 8:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_CLOSE, 8, 6 };
+    default: return (bar_look_t){ C_GREEN,  LV_SYMBOL_OK,     0, 7 };
     }
 }
 
@@ -101,15 +109,15 @@ static bar_look_t line_look(int st)
 static bar_look_t input_look(int st)
 {
     switch (st) {
-    case 12: return (bar_look_t){ C_RED,    &img_st_bell,  12, 0 };
-    case 9:  return (bar_look_t){ C_RED,    &img_st_bell,   9, 1 };
-    case 1:  return (bar_look_t){ C_RED,    &img_st_bell,   1, 2 };
-    case 4:  return (bar_look_t){ C_RED,    &img_st_bell,   4, 3 };
-    case 5:  return (bar_look_t){ C_YELLOW, &img_st_fault,  5, 4 };
-    case 8:  return (bar_look_t){ C_YELLOW, &img_st_fault,  8, 5 };
+    case 12: return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,  12, 0 };
+    case 9:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,   9, 1 };
+    case 1:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,   1, 2 };
+    case 4:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,   4, 3 };
+    case 5:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,  5, 4 };
+    case 8:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,  8, 5 };
     case 10: case 11:
              return (bar_look_t){ C_GREEN,  NULL,          st, -1 };
-    default: return (bar_look_t){ C_GREEN,  &img_bar_check, 0, 6 };
+    default: return (bar_look_t){ C_GREEN,  LV_SYMBOL_OK, 0, 6 };
     }
 }
 
@@ -210,8 +218,11 @@ static void bar_create(lv_obj_t *parent, const char *prefix, const char *name,
     lv_obj_remove_flag(bar, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(bar, LV_OBJ_FLAG_EVENT_BUBBLE);   /* scroll de la lista */
 
-    lv_obj_t *img = lv_image_create(bar);
-    lv_image_set_src(img, lk->icon);
+    lv_obj_t *ic = lv_label_create(bar);
+    lv_obj_set_style_text_font(ic, &lv_font_montserrat_32, 0);
+    lv_obj_set_width(ic, 44);
+    lv_obj_set_style_text_align(ic, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_text(ic, lk->icon);
 
     lv_obj_t *col = lv_obj_create(bar);
     lv_obj_remove_style_all(col);
@@ -307,7 +318,9 @@ void panel_ui_start(void)
     if (objects.bars_list) {
         lv_obj_set_flex_flow(objects.bars_list, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_style_pad_row(objects.bars_list, 8, 0);
+        lv_obj_add_flag(objects.bars_list, LV_OBJ_FLAG_SCROLLABLE);  /* EEZ lo crea sin SCROLLABLE */
         lv_obj_set_scroll_dir(objects.bars_list, LV_DIR_VER);
+        lv_obj_set_scrollbar_mode(objects.bars_list, LV_SCROLLBAR_MODE_AUTO);
     }
     if (objects.fault_conn) {
         lv_obj_remove_flag(objects.fault_conn, LV_OBJ_FLAG_SCROLLABLE);

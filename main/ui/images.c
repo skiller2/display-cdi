@@ -1,25 +1,5 @@
 #include "images.h"
 
-const ext_img_desc_t images[21] = {
-    { "icon_check", &img_icon_check },
-    { "icon_reset", &img_icon_reset },
-    { "icon_test", &img_icon_test },
-    { "icon_config", &img_icon_config },
-    { "st_battery100", &img_st_battery100 },
-    { "st_battery25", &img_st_battery25 },
-    { "st_battery50", &img_st_battery50 },
-    { "st_battery75", &img_st_battery75 },
-    { "st_batteryfault", &img_st_batteryfault },
-    { "st_bell", &img_st_bell },
-    { "st_disconnect", &img_st_disconnect },
-    { "st_extinction", &img_st_extinction },
-    { "st_fault", &img_st_fault },
-    { "st_groundconnection", &img_st_groundconnection },
-    { "st_networkfault", &img_st_networkfault },
-    { "st_networknormal", &img_st_networknormal },
-    { "st_powersupplyfault", &img_st_powersupplyfault },
-    { "st_powersupplynormal", &img_st_powersupplynormal },
-    { "st_test", &img_st_test },
-    { "bar_check", &img_bar_check },
-    { "bar_robbery", &img_bar_robbery },
+const ext_img_desc_t images[1] = {
+    0
 };
