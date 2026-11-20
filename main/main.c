@@ -26,6 +26,8 @@
 #include "ui.h"   /* generado por EEZ Studio en main/ui */
 #include "sys_info.h"
 #include "panel_model.h"
+#include "panel_ui.h"
+#include "panel_keypad.h"
 #include "screens.h"
 
 /* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
@@ -295,60 +297,119 @@ static void uart_poll_timer_cb(lv_timer_t *timer)
     }
 }
 
+/* Envía un JSON por UART con el formato de trama de frame_rx_feed:
+ * [hdr: magic 0x55AA | len | crc16][JSON]. Devuelve true si salió completo. */
+static bool uart_send_json(const char *msg)
+{
+    serial_frame_hdr_t hdr;
+    hdr.magic = FRAME_MAGIC;
+    hdr.len   = (uint16_t)strlen(msg);
+    hdr.crc16 = esp_crc16_le(UINT16_MAX, (const uint8_t *)msg, hdr.len);
+
+    int n = uart_write_bytes(UART_PORT, (const char *)&hdr, sizeof(hdr));
+    n += uart_write_bytes(UART_PORT, msg, hdr.len);
+    bool ok = n == (int)(sizeof(hdr) + hdr.len);
+
+    ESP_LOGI("UART", "Enviado %s (%d bytes, crc=%04X)", msg, n, hdr.crc16);
+    char line[64];
+    snprintf(line, sizeof(line), ok ? ">> %s enviado" : ">> Error enviando %s", msg);
+    log_line_to_display(line);
+    return ok;
+}
+
+/* ---- Acciones del encabezado (spec 001, etapas 7-8). Textos de dictionary.js ---- */
 static void enviar_ack_cb(lv_event_t *e)
 {
     (void)e;
-    /* Trama: [hdr: magic 0x55AA | len | crc16][JSON] — mismo formato que recibe frame_rx_feed */
-    static const char msg[] = "{\"cmdACK\":{}}";
-
-    serial_frame_hdr_t hdr;
-    hdr.magic = FRAME_MAGIC;
-    hdr.len   = (uint16_t)(sizeof(msg) - 1);   /* sin el '\0' */
-    hdr.crc16 = esp_crc16_le(UINT16_MAX, (const uint8_t *)msg, hdr.len);
-
-    int n = uart_write_bytes(UART_PORT, (const char *)&hdr, sizeof(hdr));
-    n += uart_write_bytes(UART_PORT, msg, hdr.len);
-
-    ESP_LOGI("UART", "Enviado %s (%d bytes, crc=%04X)", msg, n, hdr.crc16);
-    log_line_to_display(n == (int)(sizeof(hdr) + hdr.len) ? ">> cmdACK enviado" : ">> Error enviando cmdACK");
+    if (uart_send_json("{\"cmdACK\":{}}"))
+        panel_ui_notice("Enviado", "Aceptacion enviado correctamente");
+    else
+        panel_ui_notice("Error", "Error enviando aceptacion");
 }
 
-static void enviar_reset_cb(lv_event_t *e)
+static void do_reset(void *arg)
+{
+    (void)arg;
+    if (uart_send_json("{\"cmdReset\":{}}"))
+        panel_ui_notice("Enviado", "Reset enviado correctamente");
+    else
+        panel_ui_notice("Error", "Error enviando comando");
+}
+
+static void do_test(void *arg)
+{
+    (void)arg;
+    if (uart_send_json("{\"cmdTest\":{}}"))
+        panel_ui_notice("Enviado", "Test enviado correctamente");
+    else
+        panel_ui_notice("Error", "Error enviando test");
+}
+
+static void go_screen(enum ScreensEnum id)
+{
+    eez_flow_set_screen(id, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0);
+}
+
+/* Historial de pantallas para "Volver". Se registra con SCREEN_LOADED, así
+ * cuenta también los cambios hechos por flows de EEZ (botones de Main). */
+#define NAV_DEPTH 8
+static enum ScreensEnum nav_stack[NAV_DEPTH];
+static int nav_n;
+static enum ScreensEnum nav_cur = SCREEN_ID_MAIN;
+static bool nav_going_back;
+
+static void screen_loaded_cb(lv_event_t *e)
+{
+    enum ScreensEnum id = (enum ScreensEnum)(intptr_t)lv_event_get_user_data(e);
+    if (id == nav_cur) return;
+    if (nav_going_back) {
+        nav_going_back = false;
+    } else if (id == SCREEN_ID_MAIN) {
+        nav_n = 0;                       /* Main es la raíz: historial vacío */
+    } else {
+        if (nav_n == NAV_DEPTH) {        /* lleno: descarta el más viejo */
+            memmove(nav_stack, nav_stack + 1, sizeof(nav_stack[0]) * (NAV_DEPTH - 1));
+            nav_n--;
+        }
+        nav_stack[nav_n++] = nav_cur;
+    }
+    nav_cur = id;
+}
+
+static void back_cb(lv_event_t *e)
 {
     (void)e;
-    /* Trama: [hdr: magic 0x55AA | len | crc16][JSON] — mismo formato que recibe frame_rx_feed */
-    static const char msg[] = "{\"cmdReset\":{}}";
-
-    serial_frame_hdr_t hdr;
-    hdr.magic = FRAME_MAGIC;
-    hdr.len   = (uint16_t)(sizeof(msg) - 1);   /* sin el '\0' */
-    hdr.crc16 = esp_crc16_le(UINT16_MAX, (const uint8_t *)msg, hdr.len);
-
-    int n = uart_write_bytes(UART_PORT, (const char *)&hdr, sizeof(hdr));
-    n += uart_write_bytes(UART_PORT, msg, hdr.len);
-
-    ESP_LOGI("UART", "Enviado %s (%d bytes, crc=%04X)", msg, n, hdr.crc16);
-    log_line_to_display(n == (int)(sizeof(hdr) + hdr.len) ? ">> cmdACK enviado" : ">> Error enviando cmdACK");
+    enum ScreensEnum to = nav_n > 0 ? nav_stack[--nav_n] : SCREEN_ID_MAIN;
+    nav_going_back = true;
+    go_screen(to);
 }
 
-static void enviar_test_cb(lv_event_t *e)
+static void nav_init(void)
 {
-    (void)e;
-    /* Trama: [hdr: magic 0x55AA | len | crc16][JSON] — mismo formato que recibe frame_rx_feed */
-    static const char msg[] = "{\"cmdTest\":{}}";
+    struct { lv_obj_t *scr; enum ScreensEnum id; } s[] = {
+        { objects.main, SCREEN_ID_MAIN }, { objects.logs, SCREEN_ID_LOGS },
+        { objects.sys_info, SCREEN_ID_SYS_INFO }, { objects.wifi, SCREEN_ID_WIFI },
+        { objects.config, SCREEN_ID_CONFIG },
+    };
+    for (size_t i = 0; i < sizeof(s) / sizeof(s[0]); i++)
+        if (s[i].scr)
+            lv_obj_add_event_cb(s[i].scr, screen_loaded_cb, LV_EVENT_SCREEN_LOADED, (void *)(intptr_t)s[i].id);
 
-    serial_frame_hdr_t hdr;
-    hdr.magic = FRAME_MAGIC;
-    hdr.len   = (uint16_t)(sizeof(msg) - 1);   /* sin el '\0' */
-    hdr.crc16 = esp_crc16_le(UINT16_MAX, (const uint8_t *)msg, hdr.len);
-
-    int n = uart_write_bytes(UART_PORT, (const char *)&hdr, sizeof(hdr));
-    n += uart_write_bytes(UART_PORT, msg, hdr.len);
-
-    ESP_LOGI("UART", "Enviado %s (%d bytes, crc=%04X)", msg, n, hdr.crc16);
-    log_line_to_display(n == (int)(sizeof(hdr) + hdr.len) ? ">> cmdACK enviado" : ">> Error enviando cmdACK");
+    lv_obj_t *backs[] = { objects.logs_back, objects.sys_back, objects.wifi_back, objects.cfg_back };
+    for (size_t i = 0; i < sizeof(backs) / sizeof(backs[0]); i++)
+        if (backs[i]) lv_obj_add_event_cb(backs[i], back_cb, LV_EVENT_CLICKED, NULL);
 }
 
+static void do_config(void *arg) { (void)arg; go_screen(SCREEN_ID_CONFIG); }
+static void btn_reset_cb(lv_event_t *e)  { (void)e; panel_keypad_open(1, do_reset, NULL); }
+static void btn_test_cb(lv_event_t *e)   { (void)e; panel_keypad_open(1, do_test, NULL); }
+static void btn_config_cb(lv_event_t *e) { (void)e; panel_keypad_open(2, do_config, NULL); }
+
+/* Pantalla Config: el destino va en user_data */
+static void cfg_nav_cb(lv_event_t *e)
+{
+    go_screen((enum ScreensEnum)(intptr_t)lv_event_get_user_data(e));
+}
 
 void app_main(void)
 {
@@ -407,10 +468,17 @@ void app_main(void)
         lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
         lv_timer_create(uart_poll_timer_cb, 50, NULL);
 
-        /* Botón "enviar_uart" de EEZ: manda TEST por la UART */
-        lv_obj_add_event_cb(objects.enviar_ack, enviar_ack_cb, LV_EVENT_CLICKED, NULL);
-        lv_obj_add_event_cb(objects.enviar_reset, enviar_reset_cb, LV_EVENT_CLICKED, NULL);
-        lv_obj_add_event_cb(objects.enviar_test, enviar_test_cb, LV_EVENT_CLICKED, NULL);
+        /* Encabezado Main (spec 001, etapa 2). ACK directo; Reset/Test/Config
+         * pasarán por el teclado PIN en la etapa 7. */
+        lv_obj_add_event_cb(objects.btn_ack, enviar_ack_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_add_event_cb(objects.btn_reset, btn_reset_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_add_event_cb(objects.btn_test, btn_test_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_add_event_cb(objects.btn_config, btn_config_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_add_event_cb(objects.cfg_wifi, cfg_nav_cb, LV_EVENT_CLICKED, (void *)(intptr_t)SCREEN_ID_WIFI);
+        lv_obj_add_event_cb(objects.cfg_sysinfo, cfg_nav_cb, LV_EVENT_CLICKED, (void *)(intptr_t)SCREEN_ID_SYS_INFO);
+        lv_obj_add_event_cb(objects.cfg_logs, cfg_nav_cb, LV_EVENT_CLICKED, (void *)(intptr_t)SCREEN_ID_LOGS);
+        nav_init();
+        panel_ui_start();
 
         last_activity = lv_tick_get();
         lv_timer_create(inactivity_timer_cb, 1000, NULL);

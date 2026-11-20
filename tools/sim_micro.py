@@ -127,6 +127,7 @@ class Link:
         self.ser = serial.Serial(port, baud, timeout=0.1)
         self.lock = threading.Lock()
         self.verbose = verbose
+        self.paused = False          # 'p': simula micro desconectado
         self.reader = FrameReader()
         threading.Thread(target=self._rx_loop, daemon=True).start()
 
@@ -181,24 +182,46 @@ class Link:
 
 # --------------------------------------------------------------- menú -----
 HELP = """
-Comandos:
-  s            enviar barstatus
-  l            enviar LINEAS + ENTRADAS
-  u            enviar USR (usuarios)
-  a            enviar todo
-  f <CLAVE>    alternar flag de barstatus (ej: f ALARMA, f FALLA, f MANUALMODE)
-  b <0-100>    batería %
-  L <n> <st>   estado de línea n (ej: L 1 2 = alarma)
-  E <n> <st>   estado de entrada n
-  le <n> <0|1> habilitar línea n     ie <n> <0|1> habilitar entrada n
-  r            estados aleatorios + enviar todo
-  raw <json>   enviar JSON crudo
-  bad          enviar trama con CRC roto
-  big          enviar JSON > 2048 B (debe descartarse)
-  v            verbose on/off
-  q            salir
-Estados línea:   0 normal 2 alarma 3 prealarma 4 téc 6 abierto 7 corto 8 deshab 19 robo 21-26
-Estados entrada: 0 normal 1 alarma 4 téc 5 falla 8 deshab 9 PDM 10 ack 11 reset 12 aborto
+ENVIAR
+  s              barstatus
+  l              LINEAS + ENTRADAS
+  u              USR (usuarios)
+  a              todo
+
+ESTADO GENERAL (barra superior)
+  f <CLAVE>      prender/apagar un indicador y enviar
+                 claves: ALARMA FALLA DESCONEXION TIERRA TEST EXTINCION
+                         ALIMENTACION RED MANUALMODE SIREN FLAGFBAT
+  b <0-100>      batería %                          ej: b 30
+  raw {"barstatus":{"MODULO_I1":1}}   módulo: 1 conectado, 0 desconectado, -1 no instalado
+
+LÍNEAS / ENTRADAS (lista de barras)
+  le <n> <0|1>   habilitar/ocultar línea n          ej: le 3 1
+  ie <n> <0|1>   habilitar/ocultar entrada n        ej: ie 3 1
+  L <n> <est>    estado de línea n                  ej: L 1 2   (alarma)
+  E <n> <est>    estado de entrada n                ej: E 3 1   (alarma)
+                 (solo se ven las habilitadas: primero 'le'/'ie')
+
+  Estados línea:   0 normal  2 alarma  3 prealarma  4 alarma técnica
+                   6 abierta  7 corto  8 excluida  19 robo
+                   21 puerta  22 presencia  23 temperatura  24 baja presión
+                   25 corte suministro  26 evacuación
+  Estados entrada: 0 normal  1 alarma  4 alarma técnica  5 falla  8 excluida
+                   9 PDM  12 aborto  10 aceptación (aviso)  11 reset (aviso)
+
+PRUEBAS
+  r              todo al azar y enviar
+  p              pausar/reanudar keepalive -> a los 10 s "Sin conexion con el micro"
+  bad            trama con CRC roto (el display la descarta)
+  big            trama > 2048 B (el display la descarta)
+  raw <json>     enviar un JSON cualquiera
+
+OTROS
+  v              mostrar el JSON de cada envío
+  h              esta ayuda
+  q              salir
+
+Lo que manda el display se muestra como  << OK {...}
 """
 
 
@@ -274,6 +297,9 @@ def handle(link: Link, line: str) -> bool:
         elif c == "v":
             link.verbose = not link.verbose
             print("   verbose", link.verbose)
+        elif c == "p":
+            link.paused = not link.paused
+            print("   keepalive", "PAUSADO (simula micro mudo)" if link.paused else "activo")
         else:
             print("? (h = ayuda)")
     except (IndexError, ValueError, KeyError) as e:
@@ -288,6 +314,8 @@ def main():
     ap.add_argument("--auto", type=float, metavar="SEG",
                     help="enviar estado cada SEG segundos (sin menú)")
     ap.add_argument("-v", "--verbose", action="store_true", help="mostrar JSON enviado")
+    ap.add_argument("--keepalive", type=float, default=3, metavar="SEG",
+                    help="en modo menú, reenviar barstatus cada SEG s en silencio (0 = no). Default 3")
     a = ap.parse_args()
 
     link = Link(a.port, a.baud, a.verbose)
@@ -302,6 +330,14 @@ def main():
             return
 
     link.send_all()
+    if a.keepalive > 0:
+        def keepalive():
+            while True:
+                time.sleep(a.keepalive)
+                if not link.paused:
+                    with link.lock:
+                        link.ser.write(build_frame(msg_barstatus()))
+        threading.Thread(target=keepalive, daemon=True).start()
     try:
         while True:
             if not handle(link, input("> ")):

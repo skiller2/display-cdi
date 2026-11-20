@@ -32,7 +32,7 @@ python tools/sim_micro.py COM5 --baud 115200
 
 En Linux/macOS el puerto es `/dev/ttyUSB0`, `/dev/tty.usbserial-…`, etc.
 
-Al conectarse envía el estado completo una vez.
+Al conectarse envía el estado completo una vez. En modo menú, además, reenvía `barstatus` cada 3 s en silencio (keepalive) para que el display no marque falta de conexión. Se cambia con `--keepalive SEG` (`0` lo desactiva).
 
 ### Comandos del menú
 
@@ -54,6 +54,7 @@ Al conectarse envía el estado completo una vez.
 | `bad` | Enviar una trama con CRC roto (el display la debe descartar) |
 | `big` | Enviar una trama > 2048 B (el display la debe descartar) |
 | `v` | Verbose on/off |
+| `p` | Pausar o reanudar el keepalive (a los 10 s el display muestra "Sin conexion con el micro") |
 | `q` | Salir |
 
 ### Códigos de estado

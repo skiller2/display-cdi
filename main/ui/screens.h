@@ -15,7 +15,8 @@ enum ScreensEnum {
     SCREEN_ID_LOGS = 2,
     SCREEN_ID_SYS_INFO = 3,
     SCREEN_ID_WIFI = 4,
-    _SCREEN_ID_LAST = 4
+    SCREEN_ID_CONFIG = 5,
+    _SCREEN_ID_LAST = 5
 };
 
 typedef struct _objects_t {
@@ -23,20 +24,45 @@ typedef struct _objects_t {
     lv_obj_t *logs;
     lv_obj_t *sys_info;
     lv_obj_t *wifi;
+    lv_obj_t *config;
+    lv_obj_t *status_bar;
+    lv_obj_t *st_left;
+    lv_obj_t *st_alarma;
+    lv_obj_t *st_falla;
+    lv_obj_t *st_desconexion;
+    lv_obj_t *st_tierra;
+    lv_obj_t *st_test;
+    lv_obj_t *st_extincion;
+    lv_obj_t *st_bateria;
+    lv_obj_t *st_alimentacion;
+    lv_obj_t *st_red;
+    lv_obj_t *st_mod_i1;
     lv_obj_t *obj0;
+    lv_obj_t *st_mod_i2;
     lv_obj_t *obj1;
-    lv_obj_t *enviar_ack;
-    lv_obj_t *enviar_reset;
-    lv_obj_t *enviar_test;
+    lv_obj_t *st_mod_o1;
     lv_obj_t *obj2;
+    lv_obj_t *st_mod_o2;
     lv_obj_t *obj3;
+    lv_obj_t *st_autman_box;
+    lv_obj_t *st_autman;
+    lv_obj_t *main_header;
+    lv_obj_t *main_title;
+    lv_obj_t *btn_ack;
+    lv_obj_t *btn_reset;
+    lv_obj_t *btn_test;
+    lv_obj_t *btn_config;
+    lv_obj_t *bars_list;
+    lv_obj_t *fault_conn;
+    lv_obj_t *obj4;
+    lv_obj_t *logs_back;
     lv_obj_t *lista_logs;
     lv_obj_t *sys_chip;
     lv_obj_t *sys_heap;
     lv_obj_t *sys_mem;
     lv_obj_t *sys_flash;
     lv_obj_t *sys_cpu;
-    lv_obj_t *obj4;
+    lv_obj_t *sys_back;
     lv_obj_t *wifi_ssid;
     lv_obj_t *wifi_pass;
     lv_obj_t *wifi_connect;
@@ -45,9 +71,21 @@ typedef struct _objects_t {
     lv_obj_t *wifi_scan_lbl;
     lv_obj_t *wifi_status;
     lv_obj_t *wifi_list;
-    lv_obj_t *obj5;
+    lv_obj_t *wifi_back;
     lv_obj_t *wifi_kb;
     lv_obj_t *wifi_show;
+    lv_obj_t *obj5;
+    lv_obj_t *cfg_wifi;
+    lv_obj_t *obj6;
+    lv_obj_t *obj7;
+    lv_obj_t *cfg_sysinfo;
+    lv_obj_t *obj8;
+    lv_obj_t *obj9;
+    lv_obj_t *cfg_logs;
+    lv_obj_t *obj10;
+    lv_obj_t *obj11;
+    lv_obj_t *cfg_back;
+    lv_obj_t *obj12;
 } objects_t;
 
 extern objects_t objects;
@@ -63,6 +101,9 @@ void tick_screen_sys_info();
 
 void create_screen_wifi();
 void tick_screen_wifi();
+
+void create_screen_config();
+void tick_screen_config();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

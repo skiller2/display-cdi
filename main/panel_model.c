@@ -177,6 +177,8 @@ int panel_model_feed(const char *json, size_t len, uint32_t now_ms)
 
     cJSON_Delete(root);
     m.last_rx_ms = now_ms;
+    if (upd) m.version++;
+    if (upd & (PANEL_UPD_LINES | PANEL_UPD_INPUTS)) m.bars_version++;
     return upd;
 }
 

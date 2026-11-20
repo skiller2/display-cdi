@@ -45,6 +45,8 @@ typedef struct {
     bool           users_from_micro;   /* false = usuarios default */
     char           mac[24];            /* MAC del micro (última recibida) */
     uint32_t       last_rx_ms;         /* tick del último JSON válido */
+    uint32_t       version;            /* ++ en cada feed con cambios (para redibujar) */
+    uint32_t       bars_version;       /* ++ cuando llegan LINEAS o ENTRADAS */
 } panel_model_t;
 
 /* Qué partes actualizó el último feed */

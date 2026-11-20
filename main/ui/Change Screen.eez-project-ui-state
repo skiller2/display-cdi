@@ -1,6 +1,6 @@
 {
   "navigation": {
-    "selectedUserPageObject": "[Change Screen.eez-project]:/userPages/3",
+    "selectedUserPageObject": "[Change Screen.eez-project]:/userPages/0",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Actions"
     }
@@ -204,16 +204,15 @@
                 {
                   "type": "tab",
                   "id": "#070fca68-2cc2-4768-a8d4-54d0882a8172",
-                  "name": "Wifi",
+                  "name": "Main",
                   "component": "editor",
                   "config": {
-                    "objectPath": "[Change Screen.eez-project]:/userPages/3",
+                    "objectPath": "[Change Screen.eez-project]:/userPages/0",
                     "permanent": false
                   },
                   "icon": "svg:page"
                 }
-              ],
-              "active": true
+              ]
             },
             {
               "type": "row",
@@ -233,7 +232,8 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ]
+                  ],
+                  "active": true
                 },
                 {
                   "type": "tabset",
@@ -1066,17 +1066,23 @@
       "selectionFront": {},
       "selectionBack": {
         "1": {
-          "0": {},
-          "1": {}
+          "0": {
+            "2": {},
+            "5": {}
+          },
+          "1": {},
+          "2": {
+            "$selected": true
+          }
         },
         "2": {}
       },
       "transform": {
         "translate": {
-          "x": -472.26250000000005,
-          "y": -369.975
+          "x": -437.12922077922076,
+          "y": -243.42604617604627
         },
-        "scale": 1.1
+        "scale": 1
       },
       "timeline": {
         "isEditorActive": false,
@@ -1182,10 +1188,10 @@
       },
       "transform": {
         "translate": {
-          "x": -597.73,
-          "y": -141
+          "x": -379.73,
+          "y": -149
         },
-        "scale": 0.5
+        "scale": 0.75
       },
       "timeline": {
         "isEditorActive": false,
@@ -1208,7 +1214,7 @@
           "x": -400,
           "y": -240
         },
-        "scale": 1.1
+        "scale": 0.75
       },
       "timeline": {
         "isEditorActive": false,
@@ -1242,6 +1248,23 @@
         "secondToPx": 200,
         "scrollLeft": 0
       }
+    },
+    "[Change Screen.eez-project]:/userPages/4[flow-state]": {
+      "selectionFront": {},
+      "selectionBack": {},
+      "transform": {
+        "translate": {
+          "x": -400,
+          "y": -240
+        },
+        "scale": 1
+      },
+      "timeline": {
+        "isEditorActive": false,
+        "position": 0,
+        "secondToPx": 200,
+        "scrollLeft": 0
+      }
     }
   },
   "activeOutputSection": 0,
@@ -1264,7 +1287,7 @@
   ],
   "showInactiveFlowsInDebugger": true,
   "globalFlowZoom": true,
-  "flowZoom": 0.75,
+  "flowZoom": 1,
   "implementationLanguage": "C",
   "openDialogDefaultPath": "C:\\Users\\fmosc\\CODE\\display-cdi\\main\\ui"
 }
