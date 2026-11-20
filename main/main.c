@@ -364,6 +364,12 @@ void app_main(void)
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_touch_handle_t touch_handle = NULL;
 
+    /* Wi-Fi primero: necesita RAM interna contigua que el LCD/LVGL consumen después */
+    ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    wifi_init();
+
     ESP_ERROR_CHECK(waveshare_esp32_s3_rgb_lcd_init(tear_mode, rotation, &panel_handle, &touch_handle));
     g_panel = panel_handle;
     ESP_ERROR_CHECK(waveshare_rgb_lcd_backlight_on());
@@ -391,12 +397,7 @@ void app_main(void)
 
     ESP_ERROR_CHECK(esp_lv_adapter_start());
 
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
     display_config_load();
-    wifi_init();
 
 #ifdef HAVE_EEZ_UI
     /* Interfaz de EEZ Studio */
@@ -405,6 +406,7 @@ void app_main(void)
         ui_init();
         lv_timer_create(eez_ui_tick_cb, 33, NULL);
         sys_info_start();
+        wifi_config_bind_eez();
 
         /* Logs por UART en el contenedor "lista_logs" diseñado en EEZ */
         cont_scroll = objects.lista_logs;

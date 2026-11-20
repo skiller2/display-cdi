@@ -14,26 +14,41 @@ enum ScreensEnum {
     SCREEN_ID_MAIN = 1,
     SCREEN_ID_LOGS = 2,
     SCREEN_ID_SYS_INFO = 3,
-    _SCREEN_ID_LAST = 3
+    SCREEN_ID_WIFI = 4,
+    _SCREEN_ID_LAST = 4
 };
 
 typedef struct _objects_t {
     lv_obj_t *main;
     lv_obj_t *logs;
     lv_obj_t *sys_info;
+    lv_obj_t *wifi;
     lv_obj_t *obj0;
     lv_obj_t *obj1;
     lv_obj_t *enviar_ack;
     lv_obj_t *enviar_reset;
     lv_obj_t *enviar_test;
     lv_obj_t *obj2;
+    lv_obj_t *obj3;
     lv_obj_t *lista_logs;
     lv_obj_t *sys_chip;
     lv_obj_t *sys_heap;
     lv_obj_t *sys_mem;
     lv_obj_t *sys_flash;
     lv_obj_t *sys_cpu;
-    lv_obj_t *obj3;
+    lv_obj_t *obj4;
+    lv_obj_t *wifi_ssid;
+    lv_obj_t *wifi_pass;
+    lv_obj_t *wifi_connect;
+    lv_obj_t *wifi_scan;
+    lv_obj_t *wifi_scan_spinner;
+    lv_obj_t *wifi_scan_lbl;
+    lv_obj_t *wifi_status;
+    lv_obj_t *wifi_list;
+    lv_obj_t *obj5;
+    lv_obj_t *wifi_kb;
+    lv_obj_t *wifi_show;
+    lv_obj_t *wifi_auth;
 } objects_t;
 
 extern objects_t objects;
@@ -46,6 +61,9 @@ void tick_screen_logs();
 
 void create_screen_sys_info();
 void tick_screen_sys_info();
+
+void create_screen_wifi();
+void tick_screen_wifi();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

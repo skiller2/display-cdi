@@ -12,8 +12,8 @@
 
 objects_t objects;
 
-static const char *screen_names[] = { "Main", "Logs", "SysInfo" };
-static const char *object_names[] = { "main", "logs", "sys_info", "obj0", "obj1", "enviar_ack", "enviar_reset", "enviar_test", "obj2", "lista_logs", "sys_chip", "sys_heap", "sys_mem", "sys_flash", "sys_cpu", "obj3" };
+static const char *screen_names[] = { "Main", "Logs", "SysInfo", "Wifi" };
+static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "obj0", "obj1", "enviar_ack", "enviar_reset", "enviar_test", "obj2", "obj3", "lista_logs", "sys_chip", "sys_heap", "sys_mem", "sys_flash", "sys_cpu", "obj4", "wifi_ssid", "wifi_pass", "wifi_connect", "wifi_scan", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "obj5", "wifi_kb", "wifi_show", "wifi_auth" };
 
 //
 // Event handlers
@@ -43,7 +43,18 @@ static void event_handler_cb_main_obj1(lv_event_t *e) {
     }
 }
 
-static void event_handler_cb_logs_obj2(lv_event_t *e) {
+static void event_handler_cb_main_obj2(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_CLICKED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 13, 0, e);
+    }
+}
+
+static void event_handler_cb_logs_obj3(lv_event_t *e) {
     lv_event_code_t event = lv_event_get_code(e);
     void *flowState = lv_event_get_user_data(e);
     (void)flowState;
@@ -63,7 +74,7 @@ static void event_handler_cb_sys_info_sys_info(lv_event_t *e) {
     }
 }
 
-static void event_handler_cb_sys_info_obj3(lv_event_t *e) {
+static void event_handler_cb_sys_info_obj4(lv_event_t *e) {
     lv_event_code_t event = lv_event_get_code(e);
     void *flowState = lv_event_get_user_data(e);
     (void)flowState;
@@ -71,6 +82,39 @@ static void event_handler_cb_sys_info_obj3(lv_event_t *e) {
     if (event == LV_EVENT_CLICKED) {
         e->user_data = (void *)0;
         flowPropagateValueLVGLEvent(flowState, 7, 0, e);
+    }
+}
+
+static void event_handler_cb_wifi_wifi_connect(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_CLICKED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 6, 0, e);
+    }
+}
+
+static void event_handler_cb_wifi_wifi_scan(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_CLICKED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 8, 0, e);
+    }
+}
+
+static void event_handler_cb_wifi_obj5(lv_event_t *e) {
+    lv_event_code_t event = lv_event_get_code(e);
+    void *flowState = lv_event_get_user_data(e);
+    (void)flowState;
+    
+    if (event == LV_EVENT_CLICKED) {
+        e->user_data = (void *)0;
+        flowPropagateValueLVGLEvent(flowState, 14, 0, e);
     }
 }
 
@@ -179,6 +223,25 @@ void create_screen_main() {
                 }
             }
         }
+        {
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.obj2 = obj;
+            lv_obj_set_pos(obj, 300, 430);
+            lv_obj_set_size(obj, 100, 50);
+            lv_obj_add_event_cb(obj, event_handler_cb_main_obj2, LV_EVENT_ALL, flowState);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "WiFi");
+                }
+            }
+        }
     }
     
     tick_screen_main();
@@ -207,10 +270,10 @@ void create_screen_logs() {
         }
         {
             lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.obj2 = obj;
+            objects.obj3 = obj;
             lv_obj_set_pos(obj, 684, 414);
             lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_logs_obj2, LV_EVENT_ALL, flowState);
+            lv_obj_add_event_cb(obj, event_handler_cb_logs_obj3, LV_EVENT_ALL, flowState);
             {
                 lv_obj_t *parent_obj = obj;
                 {
@@ -307,10 +370,10 @@ void create_screen_sys_info() {
         }
         {
             lv_obj_t *obj = lv_button_create(parent_obj);
-            objects.obj3 = obj;
+            objects.obj4 = obj;
             lv_obj_set_pos(obj, 700, 430);
             lv_obj_set_size(obj, 100, 50);
-            lv_obj_add_event_cb(obj, event_handler_cb_sys_info_obj3, LV_EVENT_ALL, flowState);
+            lv_obj_add_event_cb(obj, event_handler_cb_sys_info_obj4, LV_EVENT_ALL, flowState);
             {
                 lv_obj_t *parent_obj = obj;
                 {
@@ -332,14 +395,223 @@ void tick_screen_sys_info() {
     (void)flowState;
 }
 
+void create_screen_wifi() {
+    void *flowState = getFlowState(0, 3);
+    (void)flowState;
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.wifi = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 800, 480);
+    {
+        lv_obj_t *parent_obj = obj;
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 16, 8);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_text_font(obj, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "WiFi");
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 16, 50);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            lv_label_set_text_static(obj, "SSID");
+        }
+        {
+            // wifi_ssid
+            lv_obj_t *obj = lv_textarea_create(parent_obj);
+            objects.wifi_ssid = obj;
+            lv_obj_set_pos(obj, 16, 70);
+            lv_obj_set_size(obj, 408, 40);
+            lv_textarea_set_max_length(obj, 128);
+            lv_textarea_set_one_line(obj, true);
+            lv_textarea_set_password_mode(obj, false);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_WITH_ARROW);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        }
+        {
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            lv_obj_set_pos(obj, 16, 116);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            lv_label_set_text_static(obj, "Password");
+        }
+        {
+            // wifi_pass
+            lv_obj_t *obj = lv_textarea_create(parent_obj);
+            objects.wifi_pass = obj;
+            lv_obj_set_pos(obj, 16, 136);
+            lv_obj_set_size(obj, 330, 40);
+            lv_textarea_set_max_length(obj, 128);
+            lv_textarea_set_one_line(obj, true);
+            lv_textarea_set_password_mode(obj, true);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_WITH_ARROW);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        }
+        {
+            // wifi_connect
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.wifi_connect = obj;
+            lv_obj_set_pos(obj, 16, 232);
+            lv_obj_set_size(obj, 200, 44);
+            lv_obj_add_event_cb(obj, event_handler_cb_wifi_wifi_connect, LV_EVENT_ALL, flowState);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "Conectar");
+                }
+            }
+        }
+        {
+            // wifi_scan
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.wifi_scan = obj;
+            lv_obj_set_pos(obj, 224, 232);
+            lv_obj_set_size(obj, 200, 44);
+            lv_obj_add_event_cb(obj, event_handler_cb_wifi_wifi_scan, LV_EVENT_ALL, flowState);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 4, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_align(obj, LV_ALIGN_LEFT_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "");
+                }
+                {
+                    // wifi_scan_spinner
+                    lv_obj_t *obj = lv_spinner_create(parent_obj);
+                    objects.wifi_scan_spinner = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, 24, 24);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ON_FOCUS|LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_set_style_arc_width(obj, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_align(obj, LV_ALIGN_LEFT_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_arc_width(obj, 4, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+                }
+                {
+                    // wifi_scan_lbl
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.wifi_scan_lbl = obj;
+                    lv_obj_set_pos(obj, 36, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_align(obj, LV_ALIGN_LEFT_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "Escanear");
+                }
+            }
+        }
+        {
+            // wifi_status
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.wifi_status = obj;
+            lv_obj_set_pos(obj, 100, 14);
+            lv_obj_set_size(obj, 684, 20);
+            lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            lv_label_set_text(obj, "");
+        }
+        {
+            // wifi_list
+            lv_obj_t *obj = lv_list_create(parent_obj);
+            objects.wifi_list = obj;
+            lv_obj_set_pos(obj, 440, 50);
+            lv_obj_set_size(obj, 344, 226);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        }
+        {
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.obj5 = obj;
+            lv_obj_set_pos(obj, 692, 420);
+            lv_obj_set_size(obj, 92, 44);
+            lv_obj_add_event_cb(obj, event_handler_cb_wifi_obj5, LV_EVENT_ALL, flowState);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "Main");
+                }
+            }
+        }
+        {
+            // wifi_kb
+            lv_obj_t *obj = lv_keyboard_create(parent_obj);
+            objects.wifi_kb = obj;
+            lv_obj_set_pos(obj, 0, 288);
+            lv_obj_set_size(obj, 800, 192);
+            lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_SCROLL_ON_FOCUS|LV_OBJ_FLAG_HIDDEN);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
+        }
+        {
+            // wifi_show
+            lv_obj_t *obj = lv_button_create(parent_obj);
+            objects.wifi_show = obj;
+            lv_obj_set_pos(obj, 354, 136);
+            lv_obj_set_size(obj, 70, 40);
+            {
+                lv_obj_t *parent_obj = obj;
+                {
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_align(obj, LV_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text_static(obj, "Ver");
+                }
+            }
+        }
+        {
+            // wifi_auth
+            lv_obj_t *obj = lv_dropdown_create(parent_obj);
+            objects.wifi_auth = obj;
+            lv_obj_set_pos(obj, 16, 184);
+            lv_obj_set_size(obj, 408, 40);
+            lv_dropdown_set_options_static(obj, "Auto (WPA2 o superior)\nAbierta (sin clave)\nWPA2\nWPA2/WPA3\nWPA3");
+            lv_dropdown_set_selected(obj, 0);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        }
+    }
+    
+    tick_screen_wifi();
+}
+
+void tick_screen_wifi() {
+    void *flowState = getFlowState(0, 3);
+    (void)flowState;
+}
+
 typedef void (*tick_screen_func_t)();
 tick_screen_func_t tick_screen_funcs[] = {
     tick_screen_main,
     tick_screen_logs,
     tick_screen_sys_info,
+    tick_screen_wifi,
 };
 void tick_screen(int screen_index) {
-    if (screen_index >= 0 && screen_index < 3) {
+    if (screen_index >= 0 && screen_index < 4) {
         tick_screen_funcs[screen_index]();
     }
 }
@@ -451,4 +723,5 @@ eez_flow_init_fonts(fonts, sizeof(fonts) / sizeof(ext_font_desc_t));
     create_screen_main();
     create_screen_logs();
     create_screen_sys_info();
+    create_screen_wifi();
 }
