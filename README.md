@@ -1,103 +1,180 @@
-| Supported Targets | ESP32-S3 |
-| ----------------- | -------- |
+# display-cdi
 
-| Supported LCD Controller    | ST7701 |
-| ----------------------------| -------|
+Firmware del display táctil del panel de incendio **CDI**. Muestra en una pantalla de 800×480 lo mismo que la página principal de la web (`cdi/web/src/pages/Main.jsx`): estado general del panel, líneas, entradas y comandos ACK / Reset / Test con PIN.
 
-| Supported Touch Controller  |  GT911 |
-| ----------------------------| -------|
+| | |
+|---|---|
+| Placa | Waveshare ESP32-S3 + LCD RGB 4.3" 800×480 (ST7701), táctil GT911 |
+| SDK | ESP-IDF **v6.1** |
+| Gráficos | LVGL **9.3** (fijado en `~9.3.0`) + `esp_lvgl_adapter` |
+| Diseño de pantallas | **EEZ Studio** (proyecto `main/ui/Change Screen.eez-project`) |
+| Comunicación | UART con el micro del panel (tramas JSON con CRC) |
 
-# RGB Avoid Tearing Example
+---
 
-[esp_lcd](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/lcd.html) provides several panel drivers out-of box, e.g. ST7789, SSD1306, NT35510. However, there're a lot of other panels on the market, it's beyond `esp_lcd` component's responsibility to include them all.
+## 1. Puesta en marcha
 
-`esp_lcd` allows user to add their own panel drivers in the project scope (i.e. panel driver can live outside of esp-idf), so that the upper layer code like LVGL porting code can be reused without any modifications, as long as user-implemented panel driver follows the interface defined in the `esp_lcd` component.
+### Requisitos
+- ESP-IDF v6.1 instalado (en Windows: `C:\Espressif`, perfil `Microsoft.v6.1.PowerShell_profile.ps1`).
+- EEZ Studio.
+- Python 3 + `pyserial` para el simulador (`pip install pyserial`).
 
-This example demonstrates how to avoid tearing when using LVGL with RGB interface screens in an esp-idf project. The example will use the LVGL library to draw a stylish music player.
-
-This example uses the [esp_timer](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_timer.html) to generate the ticks needed by LVGL and uses a dedicated task to run the `lv_timer_handler()`. Since the LVGL APIs are not thread-safe, this example uses a mutex which be invoked before the call of `lv_timer_handler()` and released after it. The same mutex needs to be used in other tasks and threads around every LVGL (lv_...) related function call and code. For more porting guides, please refer to [LVGL porting doc](https://docs.lvgl.io/master/porting/index.html).
-
-## How to use the example
-
-## ESP-IDF Required
-
-### Hardware Required
-
-* An ESP32-S3R8 development board
-* A ST7701 LCD panel, with RGB interface
-* An USB cable for power supply and programming
-
-### Hardware Connection
-
-The connection between ESP Board and the LCD is as follows:
+### Compilar y flashear
+Desde una terminal "ESP-IDF" (o PowerShell con el perfil de IDF cargado):
 
 ```
-       ESP Board                           RGB  Panel
-+-----------------------+              +-------------------+
-|                   GND +--------------+GND                |
-|                       |              |                   |
-|                   3V3 +--------------+VCC                |
-|                       |              |                   |
-|                   PCLK+--------------+PCLK               |
-|                       |              |                   |
-|             DATA[15:0]+--------------+DATA[15:0]         |
-|                       |              |                   |
-|                  HSYNC+--------------+HSYNC              |
-|                       |              |                   |
-|                  VSYNC+--------------+VSYNC              |
-|                       |              |                   |
-|                     DE+--------------+DE                 |
-|                       |              |                   |
-|               BK_LIGHT+--------------+BLK                |
-+-----------------------+              |                   |
-                               3V3-----+DISP_EN            |
-                                       |                   |
-                                       +-------------------+
+idf.py build
+idf.py -p COMx flash monitor
 ```
 
-* The LCD parameters and GPIO number used by this example can be changed in [example_rgb_avoid_tearing.c](main/example_rgb_avoid_tearing.c). Especially, please pay attention to the **vendor specific initialization**, it can be different between manufacturers and should consult the LCD supplier for initialization sequence code.
-* The LVGL parameters can be changed not only through `menuconfig` but also directly in `lvgl_conf.h`
+- La primera compilación descarga los componentes (`managed_components/`).
+- Salir del monitor: `Ctrl+]`.
+- Si el flash no conecta: entrar en modo descarga (mantener **BOOT**, tocar **RESET**, soltar **BOOT**).
 
-### Configure the Project
+---
 
-Run `idf.py menuconfig` and navigate to `Example Configuration` menu.
+## 2. Estructura del proyecto
 
-### Build and Flash
+```
+main/
+  main.c            arranque: NVS, Wi-Fi, LCD, LVGL, UI; UART (recepción/envío de tramas); navegación
+  panel_model.c/.h  modelo en RAM del panel: parsea los JSON del micro (cJSON). Sin LVGL
+  panel_ui.c/.h     pantalla Main: barra de estado, barras de líneas/entradas, avisos
+  panel_keypad.c/.h teclado PIN (usuarios de USR o por defecto)
+  texts_es.h        textos en español copiados de cdi/web/src/dictionary.js
+  wifi_config.c/.h  lógica de la pantalla WiFi (scan, conectar, olvidar)
+  sys_info.c/.h     pantalla Sistema (heap, PSRAM, flash, CPU) cada 1 s
+  display_config.c  timeout de inactividad del backlight (NVS)
+  ui/               CÓDIGO GENERADO por EEZ Studio — no editar a mano
+components/
+  waveshare_rgb_lcd_port.c/.h   driver del LCD RGB y táctil
+specs/001-main-panel/           spec, plan y tareas de la pantalla Main
+tools/sim_micro.py              simulador del micro por UART (ver tools/README.md)
+```
 
-Run `idf.py set-target esp32s3` to select the target chip.
+### Regla principal: **diseño en EEZ, lógica en C**
+- EEZ genera los widgets en `main/ui/` y los expone como `objects.<identificador>` (`ui/screens.h`).
+- El C **no crea** pantallas: busca los widgets de EEZ por su identificador y les agrega eventos, textos, colores.
+- Excepciones creadas en C: las barras dinámicas de `bars_list`, el teclado PIN y las ventanas de aviso (van sobre `lv_layer_top()`).
 
-Run `idf.py -p PORT build flash monitor` to build, flash and monitor the project. A fancy animation will show up on the LCD as expected.
+---
 
-The first time you run `idf.py` for the example will cost extra time as the build system needs to address the component dependencies and downloads the missing components from registry into `managed_components` folder.
+## 3. Flujo de trabajo con EEZ Studio
 
-(To exit the serial monitor, type ``Ctrl-]``.)
+1. Abrir `main/ui/Change Screen.eez-project` en EEZ.
+2. Editar la página. A todo widget que el C deba tocar, ponerle **Identifier** (aparece como `objects.<identifier>`).
+3. **Build** en EEZ (F7) → regenera `main/ui/*.c/.h`.
+4. Si EEZ agregó o borró archivos `.c` (imágenes, fuentes): `idf.py reconfigure`.
+5. `idf.py build`.
 
-See the [Getting Started Guide](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for full steps to configure and use ESP-IDF to build projects.
+> Si el proyecto EEZ se modificó fuera de EEZ (scripts, otra persona), cerrar EEZ **sin guardar** y volver a abrirlo antes de compilar; si no, EEZ pisa los cambios con su copia en memoria.
 
-## Troubleshooting
+### Convenciones de UI
+| Elemento | Estilo |
+|---|---|
+| Fondo de pantalla | `#808080` |
+| Títulos | blanco, Montserrat 24, arriba a la izquierda (16, 12) |
+| Botones | fondo `#f8f9fa`, borde negro 2 px, radio 8, sin sombra, texto negro |
+| Contenedores/tarjetas | fondo `#f5f5f5`, borde negro 1 px, radio 8 |
+| Íconos | **símbolos de LVGL** (`LV_SYMBOL_*`) en labels, Montserrat 32, color según estado |
+| Textos | **sin tildes ni ñ**: Montserrat de LVGL no las incluye |
 
-For any technical queries, please open an [issue](https://github.com/espressif/esp-iot-solution/issues) on GitHub. We will get back to you soon.
+Fuentes activas (en `sdkconfig`): Montserrat 12, 14 (default), 16, 20, 24, 32. Para otro tamaño: `idf.py menuconfig` → LVGL → Font usage.
 
+Lista de símbolos: `managed_components/lvgl__lvgl/src/font/lv_symbol_def.h`. En EEZ se escriben como texto unicode (ej. `\uf013` = engranaje).
 
-Setup the Hardware
-Connect the external serial interface to the board as follows.
+### Pantallas
+| Pantalla | Contenido | Cómo se llega |
+|---|---|---|
+| Main | barra de estado, encabezado (ACK/Reset/Test/Config), lista `bars_list` | inicio |
+| Config | botones WiFi / Sistema / Logs | Config + PIN nivel 2 |
+| WiFi | SSID, clave, conectar, scan, lista de redes | Config |
+| SysInfo | chip, heap, memoria, flash, CPU | Config |
+| Logs | mensajes recibidos por UART | Config |
 
-  -----------------------------------------------------------------------------------------
-  | Target chip Interface | Kconfig Option     | Default ESP Pin      | External UART Pin |
-  | ----------------------|--------------------|----------------------|--------------------
-  | Transmit Data (TxD)   | EXAMPLE_UART_TXD   | GPIO4                | RxD               |
-  | Receive Data (RxD)    | EXAMPLE_UART_RXD   | GPIO5                | TxD               |
-  | Ground                | n/a                | GND                  | GND               |
-  -----------------------------------------------------------------------------------------
-Note: Some GPIOs can not be used with certain chips because they are reserved for internal use. Please refer to UART documentation for selected target.
+La navegación se hace en C (`eez_flow_set_screen`). Los botones **Volver** retroceden a la pantalla anterior (historial en `main.c`).
 
-Optionally, you can set-up and use a serial interface that has RTS and CTS signals in order to verify that the hardware control flow works. Connect the extra signals according to the following table, configure both extra pins in the example code uart_echo_example_main.c by replacing existing UART_PIN_NO_CHANGE macros with the appropriate pin numbers and configure UART1 driver to use the hardware flow control by setting .flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS and adding .rx_flow_ctrl_thresh = 122 to the uart_config structure.
+---
 
-  ---------------------------------------------------------------
-  | Target chip Interface | Macro           | External UART Pin |
-  | ----------------------|-----------------|--------------------
-  | Transmit Data (TxD)   | ECHO_TEST_RTS   | CTS               |
-  | Receive Data (RxD)    | ECHO_TEST_CTS   | RTS               |
-  | Ground                | n/a             | GND               |
-  ---------------------------------------------------------------
-Configure t
+## 4. Comunicación con el micro (UART)
+
+| | |
+|---|---|
+| Puerto | `UART_NUM_2`, 9600 8N1 |
+| Pines | RX = GPIO44, TX = GPIO43 (`main/main.c`) |
+| Trama | `[AA 55][len u16 LE][crc16 u16 LE][JSON]`, máx. 2048 B |
+| CRC | `esp_crc16_le(0xFFFF, payload, len)` |
+
+### Mensajes que llegan
+| Clave | Uso |
+|---|---|
+| `barstatus` | estado general → barra de estado |
+| `LINEAS` / `ENTRADAS` | listas completas → barras de `bars_list` |
+| `USR` | usuarios del PIN (base64 de `[{id, username, levelAccess, code}]`) |
+| `MAC` | MAC del micro (se guarda) |
+
+Si no llega ningún JSON en 10 s, aparece la barra "Sin conexion con el micro".
+
+### Comandos que se envían
+`{"cmdACK":{}}`, `{"cmdReset":{}}`, `{"cmdTest":{}}` (con `uart_send_json()` en `main.c`).
+
+Formatos completos y ejemplos: [`specs/001-main-panel/spec.md`](specs/001-main-panel/spec.md).
+
+### Flujo de datos
+```
+UART ─► uart_poll_timer_cb (50 ms) ─► frame_rx_feed ─► on_frame_payload
+                                                          │
+                                                          ▼
+                                         panel_model_feed (cJSON → RAM, version++)
+                                                          │
+                     panel_ui refresh_timer (200 ms) ◄────┘  redibuja solo si cambió
+```
+Todo corre dentro de timers de LVGL, así que el lock de LVGL ya está tomado: **no** llamar `esp_lv_adapter_lock()` ahí.
+
+---
+
+## 5. Probar sin el panel real
+
+`tools/sim_micro.py` simula el micro desde la PC con un adaptador USB-serie conectado a GPIO43/44:
+
+```
+python tools/sim_micro.py COM9
+```
+
+Comandos útiles: `f ALARMA`, `b 30`, `le 3 1`, `L 1 2`, `ie 3 1`, `E 3 1`, `r` (azar), `p` (simular corte). Ver [`tools/README.md`](tools/README.md).
+
+Usuarios por defecto del PIN: `1111` (nivel 1: Reset/Test) y `2222` (nivel 2: Config).
+
+---
+
+## 6. Recetas
+
+**Agregar un widget que el C actualiza**
+1. En EEZ: crear el widget con Identifier `mi_widget` → Build.
+2. En C: `#include "ui/screens.h"` y usar `objects.mi_widget` (después de `ui_init()`).
+3. `idf.py build`.
+
+**Agregar un dato nuevo del micro**
+1. `panel_model.h`: agregar el campo.
+2. `panel_model.c` → `panel_model_feed()`: leerlo del JSON.
+3. `panel_ui.c`: mostrarlo en `refresh_timer_cb`.
+4. Probar con el simulador (`raw {...}`).
+
+**Agregar una pantalla**
+1. EEZ: nueva página, con botón Volver con Identifier → Build → `idf.py reconfigure`.
+2. `main.c`: registrar la pantalla y su Volver en `nav_init()`, y navegar con `go_screen(SCREEN_ID_...)`.
+
+---
+
+## 7. Problemas comunes
+
+| Síntoma | Causa / solución |
+|---|---|
+| `undefined reference` a `ui_image_*` / `ui_font_*` | EEZ agregó o borró archivos → `idf.py reconfigure` |
+| `objects.xxx` no existe | falta Identifier en EEZ o no se hizo Build en EEZ |
+| Cambios del proyecto EEZ desaparecen | EEZ estaba abierto y guardó encima → cerrar sin guardar y reabrir |
+| Texto con tildes sale con cuadrados | la fuente no tiene esos caracteres → escribir sin tildes |
+| Una lista no hace scroll | falta el flag `SCROLLABLE` (EEZ o `lv_obj_add_flag`) |
+| `Could not open COMx` al flashear | cerrar monitores, reconectar USB, modo descarga (BOOT+RESET) |
+| El build sube LVGL a otra versión | no quitar `~9.3.0` de `main/idf_component.yml` |
+| `ESP_ERR_WIFI_NOT_INIT` | `wifi_init()` debe ir antes de inicializar el LCD (ya está así en `app_main`) |
