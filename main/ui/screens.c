@@ -13,7 +13,7 @@
 objects_t objects;
 
 static const char *screen_names[] = { "Main", "Logs", "SysInfo", "Wifi" };
-static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "obj0", "obj1", "enviar_ack", "enviar_reset", "enviar_test", "obj2", "obj3", "lista_logs", "sys_chip", "sys_heap", "sys_mem", "sys_flash", "sys_cpu", "obj4", "wifi_ssid", "wifi_pass", "wifi_connect", "wifi_scan", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "obj5", "wifi_kb", "wifi_show", "wifi_auth" };
+static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "obj0", "obj1", "enviar_ack", "enviar_reset", "enviar_test", "obj2", "obj3", "lista_logs", "sys_chip", "sys_heap", "sys_mem", "sys_flash", "sys_cpu", "obj4", "wifi_ssid", "wifi_pass", "wifi_connect", "wifi_scan", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "obj5", "wifi_kb", "wifi_show" };
 
 //
 // Event handlers
@@ -457,7 +457,7 @@ void create_screen_wifi() {
             // wifi_connect
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.wifi_connect = obj;
-            lv_obj_set_pos(obj, 16, 232);
+            lv_obj_set_pos(obj, 16, 184);
             lv_obj_set_size(obj, 200, 44);
             lv_obj_add_event_cb(obj, event_handler_cb_wifi_wifi_connect, LV_EVENT_ALL, flowState);
             {
@@ -477,7 +477,7 @@ void create_screen_wifi() {
             // wifi_scan
             lv_obj_t *obj = lv_button_create(parent_obj);
             objects.wifi_scan = obj;
-            lv_obj_set_pos(obj, 224, 232);
+            lv_obj_set_pos(obj, 224, 184);
             lv_obj_set_size(obj, 200, 44);
             lv_obj_add_event_cb(obj, event_handler_cb_wifi_wifi_scan, LV_EVENT_ALL, flowState);
             {
@@ -582,16 +582,6 @@ void create_screen_wifi() {
                     lv_label_set_text_static(obj, "Ver");
                 }
             }
-        }
-        {
-            // wifi_auth
-            lv_obj_t *obj = lv_dropdown_create(parent_obj);
-            objects.wifi_auth = obj;
-            lv_obj_set_pos(obj, 16, 184);
-            lv_obj_set_size(obj, 408, 40);
-            lv_dropdown_set_options_static(obj, "Auto (WPA2 o superior)\nAbierta (sin clave)\nWPA2\nWPA2/WPA3\nWPA3");
-            lv_dropdown_set_selected(obj, 0);
-            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         }
     }
     

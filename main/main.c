@@ -23,7 +23,6 @@
 #include "esp_sntp.h"
 #include "esp_crc.h"
 
-#ifdef HAVE_EEZ_UI
 #include "ui.h"   /* generado por EEZ Studio en main/ui */
 #include "sys_info.h"
 #include "screens.h"
@@ -35,7 +34,6 @@ static void eez_ui_tick_cb(lv_timer_t *t)
     (void)t;
     ui_tick();
 }
-#endif
 
 static esp_lcd_panel_handle_t g_panel;
 
@@ -399,7 +397,6 @@ void app_main(void)
 
     display_config_load();
 
-#ifdef HAVE_EEZ_UI
     /* Interfaz de EEZ Studio */
     if (esp_lv_adapter_lock(-1) == ESP_OK)
     {
@@ -424,50 +421,4 @@ void app_main(void)
 
         esp_lv_adapter_unlock();
     }
-#else
-    /* Interfaz original (pestañas Dashboard / Config / Logs) */
-    if (esp_lv_adapter_lock(-1) == ESP_OK)
-    {
-        lv_obj_t *tv = lv_tabview_create(lv_scr_act());
-        lv_obj_set_size(tv, EXAMPLE_LCD_H_RES, EXAMPLE_LCD_V_RES);
-
-        lv_obj_t *t_dash = lv_tabview_add_tab(tv, "Dashboard");
-        lv_obj_t *t_cfg = lv_tabview_add_tab(tv, "Config");
-        wifi_config_create(t_cfg);
-        lv_obj_t *t_logs = lv_tabview_add_tab(tv, "Logs");
-
-        lv_tabview_set_act(tv, 2, LV_ANIM_OFF);
-
-        lv_obj_t *lbl = lv_label_create(t_dash);
-        lv_label_set_text(lbl, "pepito");
-        lv_obj_center(lbl);
-
-        lbl = lv_label_create(t_logs);
-        lv_label_set_text(lbl, "Logs");
-        lv_obj_center(lbl);
-
-        cont_scroll = lv_obj_create(t_logs);
-        lv_obj_set_size(cont_scroll, LV_PCT(100), LV_PCT(90));
-        lv_obj_align(cont_scroll, LV_ALIGN_BOTTOM_MID, 0, 0);
-        lv_obj_set_flex_flow(cont_scroll, LV_FLEX_FLOW_COLUMN);
-        lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
-
-        last_activity = lv_tick_get();
-        lv_timer_create(inactivity_timer_cb, 1000, NULL);
-
-        lv_obj_t *clock = lv_label_create(lv_scr_act());
-        lv_obj_align(clock, LV_ALIGN_TOP_RIGHT, -10, 10);
-        lv_obj_set_style_text_font(clock, &lv_font_montserrat_20, 0);
-
-        lv_obj_t *wifi_icon = lv_label_create(lv_scr_act());
-        lv_obj_align(wifi_icon, LV_ALIGN_TOP_LEFT, 10, 10);
-        lv_obj_set_style_text_font(wifi_icon, &lv_font_montserrat_20, 0);
-        wifi_config_set_icon(wifi_icon);
-
-        lv_timer_create(clock_cb, 1000, clock);
-        lv_timer_create(uart_poll_timer_cb, 50, NULL);
-
-        esp_lv_adapter_unlock();
-    }
-#endif
 }

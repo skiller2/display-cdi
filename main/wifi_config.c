@@ -17,6 +17,7 @@
 #include "esp_lv_adapter.h"
 #include "wifi_config.h"
 #include "display_config.h"
+#include "ui/screens.h"
 
 static lv_obj_t *status_modal;
 static lv_obj_t *status_label;
@@ -107,6 +108,9 @@ static void scan_start(void);       /* requiere lock LVGL */
 static void scan_done(void);        /* corre en la tarea de eventos */
 static void list_rebuild(void);     /* requiere lock LVGL */
 
+static lv_obj_t *ssid_ta;
+static lv_obj_t *pass_ta;
+
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_SCAN_DONE)
@@ -156,6 +160,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
                 scan_start();
             if (status_label)
                 lv_label_set_text(status_label, buf);
+            /* Conectado: limpiar campos */
+            if (ssid_ta)
+                lv_textarea_set_text(ssid_ta, "");
+            if (pass_ta)
+            {
+                lv_textarea_set_text(pass_ta, "");
+                lv_textarea_set_password_mode(pass_ta, true);
+            }
             if (wifi_icon_label)
             {
                 lv_label_set_text(wifi_icon_label, LV_SYMBOL_WIFI);
@@ -166,12 +178,9 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         }
     }
 }
-static lv_obj_t *ssid_ta;
-static lv_obj_t *pass_ta;
 static lv_obj_t *ssid_list;
 static lv_obj_t *kb;
 static lv_obj_t *eez_status_label;
-static lv_obj_t *auth_dd;
 static bool wifi_inited = false;
 
 void wifi_init(void)
@@ -248,16 +257,8 @@ static void connect_cb(lv_event_t *e)
     const char *pass = lv_textarea_get_text(pass_ta);
     strncpy((char *)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid) - 1);
     strncpy((char *)cfg.sta.password, pass, sizeof(cfg.sta.password) - 1);
-    /* Seguridad elegida en el dropdown wifi_auth (EEZ).
-     * 0 Auto: WPA2 o superior (abierta si no hay clave) | 1 Abierta | 2 WPA2 | 3 WPA2/WPA3 | 4 WPA3 */
-    uint16_t sel = auth_dd ? lv_dropdown_get_selected(auth_dd) : 0;
-    switch (sel) {
-    case 1:  cfg.sta.threshold.authmode = WIFI_AUTH_OPEN; break;
-    case 2:  cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK; break;
-    case 3:  cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_WPA3_PSK; break;
-    case 4:  cfg.sta.threshold.authmode = WIFI_AUTH_WPA3_PSK; break;
-    default: cfg.sta.threshold.authmode = pass[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN; break;
-    }
+    /* Auto: WPA2 o superior; abierta si no hay clave */
+    cfg.sta.threshold.authmode = pass[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
     cfg.sta.pmf_cfg.capable = true;
     cfg.sta.pmf_cfg.required = false;
 
@@ -527,7 +528,6 @@ static void scan_done(void)
     free(recs);
 }
 
-#ifdef HAVE_EEZ_UI
 /* Arranque de la pantalla: primero la red conectada (y el último scan), después scan nuevo */
 static void wifi_screen_loaded_cb(lv_event_t *e)
 {
@@ -563,7 +563,6 @@ static void wifi_screen_loaded_cb(lv_event_t *e)
     list_rebuild();
     scan_start();
 }
-#endif
 
 static void format_bytes(char *buf, size_t len, uint32_t bytes)
 {
@@ -797,9 +796,6 @@ void wifi_config_auto_connect(void)
     }
     nvs_close(h);
 }
-#ifdef HAVE_EEZ_UI
-#include "ui/screens.h"
-
 /* Enlaza los widgets diseñados en EEZ (página Wifi) con la lógica Wi-Fi.
  * Llamar con lock LVGL tomado, después de ui_init(). */
 void wifi_config_bind_eez(void)
@@ -809,7 +805,6 @@ void wifi_config_bind_eez(void)
     ssid_list = objects.wifi_list;
     kb = objects.wifi_kb;
     eez_status_label = objects.wifi_status;
-    auth_dd = objects.wifi_auth;
 
     lv_obj_t *tas[] = {ssid_ta, pass_ta};
     for (int i = 0; i < 2; i++) {
@@ -856,4 +851,3 @@ void wifi_config_bind_eez(void)
     status_label = objects.wifi_status;
     ESP_LOGI("WIFI", "bind_eez: scan=%p list=%p", (void *)objects.wifi_scan, (void *)objects.wifi_list);
 }
-#endif

@@ -48,7 +48,6 @@ typedef struct _objects_t {
     lv_obj_t *obj5;
     lv_obj_t *wifi_kb;
     lv_obj_t *wifi_show;
-    lv_obj_t *wifi_auth;
 } objects_t;
 
 extern objects_t objects;

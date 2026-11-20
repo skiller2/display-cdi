@@ -11,7 +11,6 @@
 #include "freertos/task.h"
 #include "sys_info.h"
 
-#ifdef HAVE_EEZ_UI
 #include "ui/screens.h"
 
 static void format_bytes(char *buf, size_t len, uint32_t bytes)
@@ -100,6 +99,3 @@ void sys_info_start(void)
     sys_info_timer_cb(NULL);
     lv_timer_create(sys_info_timer_cb, 1000, NULL);
 }
-#else
-void sys_info_start(void) {}
-#endif
