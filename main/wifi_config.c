@@ -601,8 +601,8 @@ void wifi_config_bind_eez(void)
     scan_btn = objects.wifi_scan;
     scan_spinner = objects.wifi_scan_spinner;
     scan_lbl = objects.wifi_scan_lbl;
-    if (scan_spinner)   /* arco blanco: se ve sobre el fondo azul del botón */
-        lv_obj_set_style_arc_color(scan_spinner, lv_color_white(), LV_PART_INDICATOR);
+    if (scan_spinner)   /* arco negro: se ve sobre el botón claro */
+        lv_obj_set_style_arc_color(scan_spinner, lv_color_black(), LV_PART_INDICATOR);
     if (scan_lbl)
         lv_label_set_text(scan_lbl, "Escanear");
     if (scan_btn)

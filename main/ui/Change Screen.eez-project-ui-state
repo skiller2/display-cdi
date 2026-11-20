@@ -1,6 +1,6 @@
 {
   "navigation": {
-    "selectedUserPageObject": "[Change Screen.eez-project]:/userPages/0",
+    "selectedUserPageObject": "[Change Screen.eez-project]:/userPages/2",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Actions"
     }
@@ -204,15 +204,16 @@
                 {
                   "type": "tab",
                   "id": "#070fca68-2cc2-4768-a8d4-54d0882a8172",
-                  "name": "Main",
+                  "name": "SysInfo",
                   "component": "editor",
                   "config": {
-                    "objectPath": "[Change Screen.eez-project]:/userPages/0",
+                    "objectPath": "[Change Screen.eez-project]:/userPages/2",
                     "permanent": false
                   },
                   "icon": "svg:page"
                 }
-              ]
+              ],
+              "active": true
             },
             {
               "type": "row",
@@ -232,8 +233,7 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ],
-                  "active": true
+                  ]
                 },
                 {
                   "type": "tabset",
@@ -1065,17 +1065,11 @@
     "[Change Screen.eez-project]:/userPages/0[flow-state]": {
       "selectionFront": {},
       "selectionBack": {
-        "1": {
-          "0": {
-            "2": {},
-            "5": {}
-          },
-          "1": {},
+        "0": {
           "2": {
             "$selected": true
           }
-        },
-        "2": {}
+        }
       },
       "transform": {
         "translate": {
@@ -1191,7 +1185,7 @@
           "x": -379.73,
           "y": -149
         },
-        "scale": 0.75
+        "scale": 1
       },
       "timeline": {
         "isEditorActive": false,
@@ -1202,19 +1196,13 @@
     },
     "[Change Screen.eez-project]:/userPages/1[flow-state]": {
       "selectionFront": {},
-      "selectionBack": {
-        "1": {
-          "1": {
-            "$selected": true
-          }
-        }
-      },
+      "selectionBack": {},
       "transform": {
         "translate": {
           "x": -400,
           "y": -240
         },
-        "scale": 0.75
+        "scale": 1
       },
       "timeline": {
         "isEditorActive": false,
@@ -1233,14 +1221,15 @@
           "8": {},
           "9": {},
           "11": {}
-        }
+        },
+        "$selected": true
       },
       "transform": {
         "translate": {
-          "x": -100.3358225108226,
-          "y": -53.71277056277049
+          "x": -400,
+          "y": -240
         },
-        "scale": 0.75
+        "scale": 1
       },
       "timeline": {
         "isEditorActive": false,
