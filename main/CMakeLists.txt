@@ -8,6 +8,7 @@ idf_component_register(
         "main.c"
         "wifi_config.c"
         "sys_info.c"
+        "panel_model.c"
         "display_config.c"
         "../components/waveshare_rgb_lcd_port.c"
         ${EEZ_UI_SRCS}

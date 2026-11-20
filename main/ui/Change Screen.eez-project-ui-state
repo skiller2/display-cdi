@@ -1221,9 +1221,7 @@
       "selectionFront": {},
       "selectionBack": {
         "0": {
-          "4": {
-            "$selected": true
-          },
+          "4": {},
           "6": {},
           "7": {},
           "8": {},
@@ -1233,10 +1231,10 @@
       },
       "transform": {
         "translate": {
-          "x": -408.03358585858587,
-          "y": -307.1444444444444
+          "x": -100.3358225108226,
+          "y": -53.71277056277049
         },
-        "scale": 1.75
+        "scale": 0.75
       },
       "timeline": {
         "isEditorActive": false,
@@ -1266,7 +1264,7 @@
   ],
   "showInactiveFlowsInDebugger": true,
   "globalFlowZoom": true,
-  "flowZoom": 1.75,
+  "flowZoom": 0.75,
   "implementationLanguage": "C",
   "openDialogDefaultPath": "C:\\Users\\fmosc\\CODE\\display-cdi\\main\\ui"
 }

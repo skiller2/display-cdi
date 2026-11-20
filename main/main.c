@@ -25,6 +25,7 @@
 
 #include "ui.h"   /* generado por EEZ Studio en main/ui */
 #include "sys_info.h"
+#include "panel_model.h"
 #include "screens.h"
 
 /* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
@@ -197,7 +198,11 @@ static void on_frame_payload(const char *json, size_t len)
 {
     ESP_LOGI("RX", "JSON(%u): %.*s", (unsigned)len, (int)len, json);
     log_line_to_display(json);
-    // TODO: parsear el JSON (cJSON) y actualizar los objetos de la UI
+    int upd = panel_model_feed(json, len, lv_tick_get());
+    char summary[256];
+    panel_model_summary(upd, summary, sizeof(summary));
+    ESP_LOGI("RX", "%s", summary);
+    log_line_to_display(summary);
 }
 
 static void frame_rx_feed(frame_rx_t *d, uint8_t b)
@@ -264,6 +269,7 @@ static void uart_poll_timer_cb(lv_timer_t *timer)
     if (!inited) {
         uart_init();
         memset(&s_rx, 0, sizeof(s_rx));
+        panel_model_init();
         s_rx.state = RX_WAIT_MAGIC_LO;
         inited = true;
         ESP_LOGI("UART", "UART initialized on port %d, RX=%d, TX=%d", (int)UART_PORT, UART_RX_GPIO, UART_TX_GPIO);
