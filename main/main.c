@@ -55,16 +55,6 @@ static void reset_inactivity_timer(void)
     waveshare_rgb_lcd_backlight_on();
 }
 
-static void clock_cb(lv_timer_t *t)
-{
-    lv_obj_t *lbl = (lv_obj_t *)lv_timer_get_user_data(t);
-    time_t now = time(NULL);
-    struct tm *ti = localtime(&now);
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", ti->tm_hour, ti->tm_min, ti->tm_sec);
-    lv_label_set_text(lbl, buf);
-}
-
 static void touch_activity_cb(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
