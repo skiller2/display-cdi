@@ -6,6 +6,21 @@
 #define TXT_INPUT_NAME  "Entrada "
 #define TXT_SERVER_CONN "Sin conexion con la central"
 
+/* Barras de estado general (barstatus) en bars_list */
+#define TXT_ST_ALARMA      "Alarma general"
+#define TXT_ST_EXTINCION   "Extincion activada"
+#define TXT_ST_SIRENA      "Sirena activada"
+#define TXT_ST_FALLA       "Falla general"
+#define TXT_ST_TIERRA      "Falla a tierra"
+#define TXT_ST_DESCONEXION "Desconexion"
+#define TXT_ST_ALIM        "Falla alimentacion"
+#define TXT_ST_RED         "Sin conexion WiFi"
+#define TXT_ST_BATERIA     "Falla bateria"
+#define TXT_ST_MODULO      "Falla modulo %s"
+#define TXT_ST_MANUAL      "Modo Manual"
+#define TXT_ST_TEST        "Test activo"
+#define TXT_ST_SUB         "Estado general"
+
 #define TXT_ACK_INPUT_HDR   "Aceptacion"
 #define TXT_ACK_INPUT_TXT   "Entrada de aceptacion recibida"
 #define TXT_RESET_INPUT_HDR "Reset"

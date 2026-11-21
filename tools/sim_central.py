@@ -149,14 +149,16 @@ class Link:
         self.reader = FrameReader()
         threading.Thread(target=self._rx_loop, daemon=True).start()
 
-    def send(self, obj, label="", show_json=False):
-        """Envía un JSON y lo muestra. show_json=True imprime siempre el contenido
-        (keepalive); si no, solo con 'v' (verbose)."""
+    def send(self, obj, label="", keepalive=False):
+        """Envía un JSON y lo muestra. Con 'v' (verbose) imprime también el contenido.
+        keepalive=True: no imprime nada salvo en verbose (son 1 por segundo)."""
         frame = build_frame(obj)
         with self.lock:
             self.ser.write(frame)
+        if keepalive and not self.verbose:
+            return
         print(f">> {label or 'json'} ({len(frame) - 6} B)")
-        if show_json or self.verbose:
+        if self.verbose:
             print("   ", frame[6:].decode())
 
     def send_all(self):
@@ -181,15 +183,19 @@ class Link:
                         obj = json.loads(txt)
                     except ValueError:
                         pass
-                # Keepalive del display (cada 1 s): se responde y se muestra lo enviado
+                # Keepalive del display (cada 1 s): se responde; el log solo en verbose ('v')
                 if isinstance(obj, dict) and obj.get("cmdGetData") == "SSI_TIEMPO":
                     self.time_reqs += 1
                     self.last_time_req = time.time()
+                    if self.verbose:
+                        print("\n<< OK", txt)
                     if self.paused:
-                        print("-- keepalive: pedido de hora recibido, NO se responde (pausado)")
+                        if self.verbose:
+                            print("-- keepalive: pedido de hora recibido, NO se responde (pausado)")
                     else:
-                        self.send(msg_time(self.time_offset), "TIEMPO (keepalive)", show_json=True)
-                    print("> ", end="", flush=True)
+                        self.send(msg_time(self.time_offset), "TIEMPO (keepalive)", keepalive=True)
+                    if self.verbose:
+                        print("> ", end="", flush=True)
                     continue
                 print(f"\n<< {'OK ' if ok else 'CRC MAL '}{txt}")
                 if not isinstance(obj, dict):
@@ -252,7 +258,7 @@ PRUEBAS
   raw <json>     enviar un JSON cualquiera
 
 OTROS
-  v              mostrar el JSON de cada envío
+  v              verbose: JSON de cada envío y log del keepalive (1 por segundo)
   h              esta ayuda
   q              salir
 
@@ -380,7 +386,7 @@ def main():
             while True:
                 time.sleep(a.keepalive)
                 if not link.paused:
-                    link.send(msg_barstatus(), "barstatus (keepalive)", show_json=True)
+                    link.send(msg_barstatus(), "barstatus (keepalive)", keepalive=True)
         threading.Thread(target=keepalive, daemon=True).start()
     try:
         while True:

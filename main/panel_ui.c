@@ -19,54 +19,11 @@ static void show(lv_obj_t *o, bool on)
     else    lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
 }
 
-/* Íconos = símbolos de LVGL (Montserrat 32) en labels; color por estado */
-#define COL_OK   0x4caf50
-#define COL_BAD  0xdc3545
-
-static void set_sym(lv_obj_t *o, const char *sym, uint32_t color)
-{
-    if (!o) return;
-    if (strcmp(lv_label_get_text(o), sym) != 0) lv_label_set_text(o, sym);
-    lv_obj_set_style_text_color(o, lv_color_hex(color), 0);
-}
-
-static void battery_sym(int pct, const char **sym, uint32_t *col)
-{
-    /* mismos rangos que NavBar.jsx */
-    if (pct == 100)           { *sym = LV_SYMBOL_BATTERY_FULL;  *col = COL_OK; }
-    else if (pct >= 75)       { *sym = LV_SYMBOL_BATTERY_3;     *col = COL_OK; }
-    else if (pct >= 50)       { *sym = LV_SYMBOL_BATTERY_2;     *col = 0xe0a800; }
-    else if (pct > 1 && pct <= 25) { *sym = LV_SYMBOL_BATTERY_1; *col = 0xfd7e14; }
-    else                      { *sym = LV_SYMBOL_BATTERY_EMPTY; *col = COL_BAD; }
-}
-
-static void module_dot(lv_obj_t *o, int st)
-{
-    if (!o) return;
-    uint32_t c = st == 1 ? 0x4CAF50 : st == 0 ? 0xffc107 : 0x6c757d;  /* conectado / desconectado / desconocido */
-    lv_obj_set_style_bg_color(o, lv_color_hex(c), 0);
-}
-
+/* Encabezado: solo el modo AUT/MAN. Todo lo demás de barstatus (eventos,
+ * batería, alimentación, WiFi, módulos) se muestra como barras en bars_list
+ * cuando está en falla (refresh_status_bars). */
 static void refresh_status(const panel_status_t *s)
 {
-    show(objects.st_alarma,      s->alarma);
-    show(objects.st_falla,       s->falla);
-    show(objects.st_desconexion, s->desconexion);
-    show(objects.st_tierra,      s->tierra);
-    show(objects.st_test,        s->test);
-    show(objects.st_extincion,   s->extincion);
-
-    const char *bsym; uint32_t bcol;
-    battery_sym(s->bateria, &bsym, &bcol);
-    set_sym(objects.st_bateria,      bsym, bcol);
-    set_sym(objects.st_alimentacion, LV_SYMBOL_CHARGE, s->alimentacion ? COL_OK : COL_BAD);
-    set_sym(objects.st_red,          LV_SYMBOL_WIFI,   s->red ? COL_OK : COL_BAD);
-
-    module_dot(objects.st_mod_i1, s->modulo_i1);
-    module_dot(objects.st_mod_i2, s->modulo_i2);
-    module_dot(objects.st_mod_o1, s->modulo_o1);
-    module_dot(objects.st_mod_o2, s->modulo_o2);
-
     if (objects.st_autman) lv_label_set_text(objects.st_autman, s->manual_mode ? "MAN" : "AUT");
     if (objects.st_autman_box)
         lv_obj_set_style_bg_color(objects.st_autman_box,
@@ -204,8 +161,8 @@ static int cmp_items(const void *a, const void *b)
     return x->b->number - y->b->number;
 }
 
-static void bar_create(lv_obj_t *parent, const char *prefix, const char *name,
-                       const panel_bar_t *b, const bar_look_t *lk)
+/* Crea una barra en la lista: ícono + título + subtítulo, con los colores de lk */
+static void bar_create_text(lv_obj_t *parent, const bar_look_t *lk, const char *title, const char *sub)
 {
     lv_obj_t *bar = lv_obj_create(parent);
     lv_obj_set_size(bar, LV_PCT(100), LV_SIZE_CONTENT);
@@ -235,14 +192,64 @@ static void bar_create(lv_obj_t *parent, const char *prefix, const char *name,
 
     lv_obj_t *t = lv_label_create(col);
     lv_obj_set_style_text_font(t, &lv_font_montserrat_20, 0);
-    lv_label_set_text_fmt(t, "%s%s%d %s", prefix, name, b->number,
-                          (lk->text >= 0 && lk->text < TXT_STATUS_N) ? TXT_STATUS[lk->text] : "");
+    lv_label_set_text(t, title);
 
     lv_obj_t *a = lv_label_create(col);
-    lv_label_set_text(a, b->alias);
+    lv_label_set_text(a, sub);
 }
 
-/* Borra todas las barras de bars_list menos fault_conn/fault_time y las vuelve a crear */
+/* Barra de línea o entrada: "<prefijo><Linea|Entrada> <n> <estado>" + alias */
+static void bar_create(lv_obj_t *parent, const char *prefix, const char *name,
+                       const panel_bar_t *b, const bar_look_t *lk)
+{
+    char title[96];
+    snprintf(title, sizeof(title), "%s%s%d %s", prefix, name, b->number,
+             (lk->text >= 0 && lk->text < TXT_STATUS_N) ? TXT_STATUS[lk->text] : "");
+    bar_create_text(parent, lk, title, b->alias);
+}
+
+/* ---- Estado general (barstatus) como barras -------------------------------
+ * Solo los estados anormales generan barra. Van arriba de líneas y entradas,
+ * en este orden (más grave primero). */
+static void status_bar_add(lv_obj_t *list, bar_color_t c, const char *icon, const char *title)
+{
+    bar_look_t lk = { c, icon, -1, 0 };
+    bar_create_text(list, &lk, title, TXT_ST_SUB);
+}
+
+static void refresh_status_bars(lv_obj_t *list, const panel_status_t *s)
+{
+    if (!s->valid) return;
+    char buf[48];
+
+    if (s->alarma)       status_bar_add(list, C_RED,    LV_SYMBOL_BELL,    TXT_ST_ALARMA);
+    if (s->extincion)    status_bar_add(list, C_RED,    LV_SYMBOL_WARNING, TXT_ST_EXTINCION);
+    if (s->siren)        status_bar_add(list, C_ORANGE, LV_SYMBOL_VOLUME_MAX, TXT_ST_SIRENA);
+    if (s->falla)        status_bar_add(list, C_YELLOW, LV_SYMBOL_WARNING, TXT_ST_FALLA);
+    if (s->tierra)       status_bar_add(list, C_YELLOW, LV_SYMBOL_WARNING, TXT_ST_TIERRA);
+    if (s->desconexion)  status_bar_add(list, C_YELLOW, LV_SYMBOL_CLOSE,   TXT_ST_DESCONEXION);
+    if (!s->alimentacion) status_bar_add(list, C_YELLOW, LV_SYMBOL_CHARGE, TXT_ST_ALIM);
+    if (!s->red)         status_bar_add(list, C_YELLOW, LV_SYMBOL_WIFI,    TXT_ST_RED);
+    /* FLAGFBAT = la central indica falla de batería; se muestra con el % actual */
+    if (s->flag_fbat) {
+        snprintf(buf, sizeof(buf), "%s %d %%", TXT_ST_BATERIA, s->bateria);
+        status_bar_add(list, C_YELLOW, LV_SYMBOL_BATTERY_1, buf);
+    }
+    /* Módulos: -1 = no instalado (se ignora), 0 = falla (barra), 1 = normal */
+    const struct { int st; const char *name; } mods[] = {
+        { s->modulo_i1, "I1" }, { s->modulo_i2, "I2" }, { s->modulo_o1, "O1" }, { s->modulo_o2, "O2" },
+    };
+    for (int i = 0; i < 4; i++) {
+        if (mods[i].st != 0) continue;
+        snprintf(buf, sizeof(buf), TXT_ST_MODULO, mods[i].name);
+        status_bar_add(list, C_YELLOW, LV_SYMBOL_CLOSE, buf);
+    }
+    if (s->manual_mode)  status_bar_add(list, C_ORANGE, LV_SYMBOL_SETTINGS, TXT_ST_MANUAL);
+    if (s->test)         status_bar_add(list, C_ORANGE, LV_SYMBOL_SETTINGS, TXT_ST_TEST);
+}
+
+/* Borra todas las barras de bars_list menos fault_conn/fault_time y las vuelve a crear:
+ * estado general, líneas y entradas */
 static void refresh_bars(const panel_model_t *m)
 {
     lv_obj_t *list = objects.bars_list;
@@ -251,6 +258,9 @@ static void refresh_bars(const panel_model_t *m)
         lv_obj_t *c = lv_obj_get_child(list, i);
         if (c != objects.fault_conn && c != objects.fault_time) lv_obj_delete(c);
     }
+
+    /* Estado general primero */
+    refresh_status_bars(list, &m->status);
 
     bar_item_t items[PANEL_MAX_LINES > PANEL_MAX_INPUTS ? PANEL_MAX_LINES : PANEL_MAX_INPUTS];
 
@@ -319,24 +329,12 @@ static void refresh_timer_cb(lv_timer_t *t)
     if (m->version == drawn) return;     /* sin cambios */
     drawn = m->version;
     if (m->status.valid) refresh_status(&m->status);
-
-    static uint32_t bars_drawn = 0;
-    if (m->bars_version != bars_drawn) {
-        bars_drawn = m->bars_version;
-        refresh_bars(m);
-    }
+    /* La lista incluye el estado general: se rearma con cualquier cambio */
+    refresh_bars(m);
 }
 
 void panel_ui_start(void)
 {
-    /* Íconos de alarma/falla/… a la izquierda: los ocultos no ocupan lugar */
-    if (objects.st_left) {
-        lv_obj_set_flex_flow(objects.st_left, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(objects.st_left, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(objects.st_left, 8, 0);
-        lv_obj_remove_flag(objects.st_left, LV_OBJ_FLAG_SCROLLABLE);
-    }
-    if (objects.status_bar) lv_obj_remove_flag(objects.status_bar, LV_OBJ_FLAG_SCROLLABLE);
     /* Lista de barras (falla de conexión + líneas + entradas): columna con scroll */
     if (objects.bars_list) {
         lv_obj_set_flex_flow(objects.bars_list, LV_FLEX_FLOW_COLUMN);

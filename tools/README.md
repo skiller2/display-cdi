@@ -55,7 +55,7 @@ Al conectarse envía el estado completo una vez.
 | `raw <json>` | Enviar un JSON crudo (`raw {"barstatus":{"ALARMA":true}}`) |
 | `bad` | Enviar una trama con CRC roto (el display la debe descartar) |
 | `big` | Enviar una trama > 2048 B (el display la debe descartar) |
-| `v` | Verbose on/off |
+| `v` | Verbose on/off: JSON de cada envío y log del keepalive |
 | `p` | Dejar de responder el keepalive o reanudarlo (a los 5 s el display muestra "Sin conexion con la central") |
 | `t` | Enviar `TIEMPO` ahora, sin que lo pida el display |
 | `o <seg>` | Desfasar el `TIMESTAMP` (en segundos) para probar la falla de hora (`o 10` la dispara; `o 0` la quita). Usarlo **después** de que el display arrancó: el primer `TIMESTAMP` pone su hora |
@@ -94,7 +94,7 @@ El simulador muestra cada trama que manda el display (`<< OK …` o `<< CRC MAL 
 | `{"cmdTest":{}}` | `barstatus` con `TEST=true` |
 | `{"cmdReset":{}}` | Todo a normal y envío completo |
 | `{"cmdACK":{}}` | Solo lo muestra |
-| `{"cmdGetData":"SSI_TIEMPO"}` | `{"TIEMPO":"2026-11-21T12:21:11-03:00","MAC":"…","TIMESTAMP":N}` (se muestra cada envío, 1 por segundo; ver `k`) |
+| `{"cmdGetData":"SSI_TIEMPO"}` | `{"TIEMPO":"2026-11-21T12:21:11-03:00","MAC":"…","TIMESTAMP":N}` (sin log; con `v` muestra pedido y respuesta, 1 por segundo; ver `k`) |
 
 ### Formato de trama
 
