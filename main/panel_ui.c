@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #include "lvgl.h"
 #include "texts_es.h"
@@ -7,6 +9,7 @@
 #include "ui/screens.h"
 
 #define REFRESH_MS      200
+#define CLOCK_MIN_YEAR  2024    /* hora del sistema anterior a este año = no seteada -> "--:--:--" */
 #define CONN_TIMEOUT_MS 5000    /* sin JSON en este tiempo -> "Sin conexion con la central" */
 
 static void show(lv_obj_t *o, bool on)
@@ -283,9 +286,27 @@ static void refresh_bars(const panel_model_t *m)
     check_input_notices(m);
 }
 
+/* Reloj HH:MM:SS del encabezado de Main. Solo toca el label cuando cambia el texto. */
+static void refresh_clock(void)
+{
+    if (!objects.main_clock) return;
+    static char last[12];
+    char buf[12] = "--:--:--";
+    time_t now = time(NULL);
+    struct tm tm;
+    localtime_r(&now, &tm);
+    if (tm.tm_year + 1900 >= CLOCK_MIN_YEAR)
+        snprintf(buf, sizeof(buf), "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+    if (strcmp(buf, last) != 0) {
+        strcpy(last, buf);
+        lv_label_set_text(objects.main_clock, buf);
+    }
+}
+
 static void refresh_timer_cb(lv_timer_t *t)
 {
     (void)t;
+    refresh_clock();
     static uint32_t drawn = UINT32_MAX;
     const panel_model_t *m = panel_model_get();
 
