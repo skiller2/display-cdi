@@ -13,7 +13,7 @@
 objects_t objects;
 
 static const char *screen_names[] = { "Main", "Logs", "SysInfo", "Wifi", "Config" };
-static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "config", "status_bar", "st_left", "st_alarma", "st_falla", "st_desconexion", "st_tierra", "st_test", "st_extincion", "st_bateria", "st_alimentacion", "st_red", "st_mod_i1", "obj0", "st_mod_i2", "obj1", "st_mod_o1", "obj2", "st_mod_o2", "obj3", "st_autman_box", "st_autman", "main_header", "main_title", "btn_ack", "obj4", "btn_reset", "obj5", "btn_test", "obj6", "btn_config", "obj7", "bars_list", "fault_conn", "obj8", "obj9", "obj10", "logs_back", "obj11", "lista_logs", "obj12", "sys_card", "sys_chip", "sys_heap", "sys_mem", "sys_flash", "sys_cpu", "obj13", "obj14", "obj15", "obj16", "sys_back", "obj17", "obj18", "obj19", "wifi_ssid", "obj20", "wifi_pass", "wifi_connect", "obj21", "wifi_scan", "obj22", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "wifi_back", "obj23", "wifi_kb", "wifi_show", "obj24", "obj25", "cfg_wifi", "obj26", "obj27", "cfg_sysinfo", "obj28", "obj29", "cfg_logs", "obj30", "obj31", "cfg_back", "obj32" };
+static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "config", "status_bar", "st_left", "st_alarma", "st_falla", "st_desconexion", "st_tierra", "st_test", "st_extincion", "st_bateria", "st_alimentacion", "st_red", "st_mod_i1", "obj0", "st_mod_i2", "obj1", "st_mod_o1", "obj2", "st_mod_o2", "obj3", "st_autman_box", "st_autman", "main_header", "main_title", "btn_ack", "obj4", "btn_reset", "obj5", "btn_test", "obj6", "btn_config", "obj7", "bars_list", "fault_conn", "obj8", "obj9", "obj10", "logs_back", "obj11", "lista_logs", "obj12", "sys_card", "sys_chip", "sys_fw", "sys_uptime", "sys_reset", "sys_heap", "sys_mem", "sys_lvgl", "sys_flash", "sys_cpu", "sys_temp", "sys_net", "sys_time", "obj13", "obj14", "obj15", "obj16", "sys_sep5", "sys_sep6", "sys_sep7", "sys_sep8", "sys_sep9", "sys_sep10", "sys_sep11", "sys_back", "obj17", "obj18", "obj19", "wifi_ssid", "obj20", "wifi_pass", "wifi_connect", "obj21", "wifi_scan", "obj22", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "wifi_back", "obj23", "wifi_kb", "wifi_show", "obj24", "obj25", "cfg_wifi", "obj26", "obj27", "cfg_sysinfo", "obj28", "obj29", "cfg_logs", "obj30", "obj31", "cfg_back", "obj32" };
 
 //
 // Event handlers
@@ -675,7 +675,7 @@ void create_screen_sys_info() {
             lv_obj_t *obj = lv_obj_create(parent_obj);
             objects.sys_card = obj;
             lv_obj_set_pos(obj, 16, 60);
-            lv_obj_set_size(obj, 768, 290);
+            lv_obj_set_size(obj, 768, 340);
             lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
             lv_obj_set_style_bg_color(obj, lv_color_hex(0xf5f5f5), LV_PART_MAIN | LV_STATE_DEFAULT);
             lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -692,7 +692,7 @@ void create_screen_sys_info() {
                     // sys_chip
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.sys_chip = obj;
-                    lv_obj_set_pos(obj, 24, 20);
+                    lv_obj_set_pos(obj, 24, 3);
                     lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
                     lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
                     lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -700,10 +700,43 @@ void create_screen_sys_info() {
                     lv_label_set_text(obj, "sys_chip");
                 }
                 {
+                    // sys_fw
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_fw = obj;
+                    lv_obj_set_pos(obj, 24, 31);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_fw");
+                }
+                {
+                    // sys_uptime
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_uptime = obj;
+                    lv_obj_set_pos(obj, 24, 59);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_uptime");
+                }
+                {
+                    // sys_reset
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_reset = obj;
+                    lv_obj_set_pos(obj, 24, 87);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_reset");
+                }
+                {
                     // sys_heap
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.sys_heap = obj;
-                    lv_obj_set_pos(obj, 24, 74);
+                    lv_obj_set_pos(obj, 24, 115);
                     lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
                     lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
                     lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -714,7 +747,7 @@ void create_screen_sys_info() {
                     // sys_mem
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.sys_mem = obj;
-                    lv_obj_set_pos(obj, 24, 128);
+                    lv_obj_set_pos(obj, 24, 143);
                     lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
                     lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
                     lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -722,10 +755,21 @@ void create_screen_sys_info() {
                     lv_label_set_text(obj, "sys_mem");
                 }
                 {
+                    // sys_lvgl
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_lvgl = obj;
+                    lv_obj_set_pos(obj, 24, 171);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_lvgl");
+                }
+                {
                     // sys_flash
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.sys_flash = obj;
-                    lv_obj_set_pos(obj, 24, 182);
+                    lv_obj_set_pos(obj, 24, 199);
                     lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
                     lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
                     lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -736,7 +780,7 @@ void create_screen_sys_info() {
                     // sys_cpu
                     lv_obj_t *obj = lv_label_create(parent_obj);
                     objects.sys_cpu = obj;
-                    lv_obj_set_pos(obj, 24, 236);
+                    lv_obj_set_pos(obj, 24, 227);
                     lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
                     lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
                     lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -744,9 +788,42 @@ void create_screen_sys_info() {
                     lv_label_set_text(obj, "sys_cpu");
                 }
                 {
+                    // sys_temp
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_temp = obj;
+                    lv_obj_set_pos(obj, 24, 255);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_temp");
+                }
+                {
+                    // sys_net
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_net = obj;
+                    lv_obj_set_pos(obj, 24, 283);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_net");
+                }
+                {
+                    // sys_time
+                    lv_obj_t *obj = lv_label_create(parent_obj);
+                    objects.sys_time = obj;
+                    lv_obj_set_pos(obj, 24, 311);
+                    lv_obj_set_size(obj, 720, LV_SIZE_CONTENT);
+                    lv_label_set_long_mode(obj, LV_LABEL_LONG_DOT);
+                    lv_obj_set_style_text_color(obj, lv_color_hex(0x212529), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_label_set_text(obj, "sys_time");
+                }
+                {
                     lv_obj_t *obj = lv_obj_create(parent_obj);
                     objects.obj13 = obj;
-                    lv_obj_set_pos(obj, 16, 60);
+                    lv_obj_set_pos(obj, 16, 28);
                     lv_obj_set_size(obj, 736, 1);
                     lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -761,7 +838,7 @@ void create_screen_sys_info() {
                 {
                     lv_obj_t *obj = lv_obj_create(parent_obj);
                     objects.obj14 = obj;
-                    lv_obj_set_pos(obj, 16, 114);
+                    lv_obj_set_pos(obj, 16, 56);
                     lv_obj_set_size(obj, 736, 1);
                     lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -776,7 +853,7 @@ void create_screen_sys_info() {
                 {
                     lv_obj_t *obj = lv_obj_create(parent_obj);
                     objects.obj15 = obj;
-                    lv_obj_set_pos(obj, 16, 168);
+                    lv_obj_set_pos(obj, 16, 84);
                     lv_obj_set_size(obj, 736, 1);
                     lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -791,7 +868,119 @@ void create_screen_sys_info() {
                 {
                     lv_obj_t *obj = lv_obj_create(parent_obj);
                     objects.obj16 = obj;
-                    lv_obj_set_pos(obj, 16, 222);
+                    lv_obj_set_pos(obj, 16, 112);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep5
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep5 = obj;
+                    lv_obj_set_pos(obj, 16, 140);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep6
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep6 = obj;
+                    lv_obj_set_pos(obj, 16, 168);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep7
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep7 = obj;
+                    lv_obj_set_pos(obj, 16, 196);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep8
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep8 = obj;
+                    lv_obj_set_pos(obj, 16, 224);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep9
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep9 = obj;
+                    lv_obj_set_pos(obj, 16, 252);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep10
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep10 = obj;
+                    lv_obj_set_pos(obj, 16, 280);
+                    lv_obj_set_size(obj, 736, 1);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xced4da), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                }
+                {
+                    // sys_sep11
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.sys_sep11 = obj;
+                    lv_obj_set_pos(obj, 16, 308);
                     lv_obj_set_size(obj, 736, 1);
                     lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
                     lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
