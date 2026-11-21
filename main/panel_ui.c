@@ -41,43 +41,54 @@ static const struct { uint32_t bg, border, text; } BAR_COLORS[] = {
 };
 
 typedef struct {
-    bar_color_t           color;
-    const char           *icon;   /* LV_SYMBOL_* */
-    int                   text;   /* índice en TXT_STATUS */
-    int                   rank;   /* orden: menor = más arriba */
+    bar_color_t  color;
+    const char  *icon;   /* LV_SYMBOL_* */
 } bar_look_t;
 
-/* LineBar.jsx (type line). Los 19..26 muestran "Alarma" igual que la web. */
-static bar_look_t line_look(int st)
+/* Códigos de estado válidos para líneas (ver TXT_STATUS). Otros se ignoran. */
+static bool line_status_known(int st)
 {
     switch (st) {
-    case 2:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,       2, 0 };
-    case 19: return (bar_look_t){ C_RED,    LV_SYMBOL_EYE_OPEN,   2, 0 };
-    case 3:  return (bar_look_t){ C_ORANGE, LV_SYMBOL_BELL,       3, 1 };
-    case 4:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,       4, 2 };
-    case 21: case 22: case 23: case 24: case 25: case 26:
-             return (bar_look_t){ C_YELLOW, LV_SYMBOL_BELL,       2, 3 };
-    case 6:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,      6, 4 };
-    case 7:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,      7, 5 };
-    case 8:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_CLOSE, 8, 6 };
-    default: return (bar_look_t){ C_GREEN,  LV_SYMBOL_OK,     0, 7 };
+    case 2: case 3: case 4: case 6: case 7: case 8: case 19:
+    case 21: case 22: case 23: case 24: case 25: case 26: return true;
+    default: return false;
     }
 }
 
-/* LineBar.jsx (type input). Orden = customOrder 12,9,1,4,5,0 (+8 tras 5).
- * 10/11 no dibujan barra: muestran aviso (rank -1). */
+/* getBarColor / getBarIcon del widget, type 'line'.
+ * Íconos: bell -> BELL, fault -> WARNING, disconnect -> CLOSE, check -> OK */
+static bar_look_t line_look(int st)
+{
+    switch (st) {
+    case 2: case 4: case 19:
+    case 21: case 22: case 23: case 24: case 25: case 26:
+             return (bar_look_t){ C_RED,    LV_SYMBOL_BELL };
+    case 3:  return (bar_look_t){ C_ORANGE, LV_SYMBOL_BELL };
+    case 6: case 7:
+             return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING };
+    case 8:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_CLOSE };
+    default: return (bar_look_t){ C_GREEN,  LV_SYMBOL_OK };
+    }
+}
+
+/* Códigos de estado válidos para entradas (ver TXT_STATUS). Otros se ignoran. */
+static bool input_status_known(int st)
+{
+    switch (st) {
+    case 1: case 4: case 5: case 8: case 9: case 10: case 11: case 12: return true;
+    default: return false;
+    }
+}
+
+/* getBarColor / getBarIcon del widget, type 'input' */
 static bar_look_t input_look(int st)
 {
     switch (st) {
-    case 12: return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,  12, 0 };
-    case 9:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,   9, 1 };
-    case 1:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,   1, 2 };
-    case 4:  return (bar_look_t){ C_RED,    LV_SYMBOL_BELL,   4, 3 };
-    case 5:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,  5, 4 };
-    case 8:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING,  8, 5 };
-    case 10: case 11:
-             return (bar_look_t){ C_GREEN,  NULL,          st, -1 };
-    default: return (bar_look_t){ C_GREEN,  LV_SYMBOL_OK, 0, 6 };
+    case 1: case 4: case 9: case 12:
+             return (bar_look_t){ C_RED,    LV_SYMBOL_BELL };
+    case 5:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_WARNING };   /* falla */
+    case 8:  return (bar_look_t){ C_YELLOW, LV_SYMBOL_CLOSE };     /* excluida (igual que línea 8) */
+    default: return (bar_look_t){ C_GREEN,  LV_SYMBOL_OK };
     }
 }
 
@@ -152,16 +163,53 @@ static void check_input_notices(const panel_model_t *m)
     first = false;
 }
 
-typedef struct { const panel_bar_t *b; bar_look_t look; } bar_item_t;
+/* ---- Lista de barras (igual que updateBars() del widget) ------------------
+ * Una sola lista: estado general + líneas + entradas que NO están normales
+ * (status != 0) y habilitadas. Orden: rojo, naranja, amarillo, verde y,
+ * dentro de cada color, por título. */
+#define MAX_BARS (PANEL_MAX_LINES + PANEL_MAX_INPUTS + 16)
+
+typedef struct {
+    bar_look_t look;
+    char       title[64];
+    char       text[PANEL_ALIAS_LEN + 16];
+} bar_item_t;
+
+static bar_item_t s_items[MAX_BARS];   /* static: fuera del stack de LVGL */
+static int        s_n_items;
+
+static int color_prio(bar_color_t c)
+{
+    switch (c) {
+    case C_RED:    return 1;
+    case C_ORANGE: return 2;
+    case C_YELLOW: return 3;
+    default:       return 4;
+    }
+}
 
 static int cmp_items(const void *a, const void *b)
 {
     const bar_item_t *x = a, *y = b;
-    if (x->look.rank != y->look.rank) return x->look.rank - y->look.rank;
-    return x->b->number - y->b->number;
+    int d = color_prio(x->look.color) - color_prio(y->look.color);
+    return d ? d : strcmp(x->title, y->title);
 }
 
-/* Crea una barra en la lista: ícono + título + subtítulo, con los colores de lk */
+static void add_item(bar_color_t c, const char *icon, const char *title, const char *text)
+{
+    if (s_n_items >= MAX_BARS) return;
+    bar_item_t *it = &s_items[s_n_items++];
+    it->look = (bar_look_t){ c, icon };
+    snprintf(it->title, sizeof(it->title), "%s", title);
+    snprintf(it->text, sizeof(it->text), "%s", text ? text : "");
+}
+
+static const char *status_text(int st)
+{
+    return (st >= 0 && st < TXT_STATUS_N) ? TXT_STATUS[st] : TXT_ST_UNKNOWN;
+}
+
+/* Crea una barra: ícono + título en negrita y, si hay, el texto debajo */
 static void bar_create_text(lv_obj_t *parent, const bar_look_t *lk, const char *title, const char *sub)
 {
     lv_obj_t *bar = lv_obj_create(parent);
@@ -194,62 +242,40 @@ static void bar_create_text(lv_obj_t *parent, const bar_look_t *lk, const char *
     lv_obj_set_style_text_font(t, &lv_font_montserrat_20, 0);
     lv_label_set_text(t, title);
 
-    lv_obj_t *a = lv_label_create(col);
-    lv_label_set_text(a, sub);
+    if (sub && sub[0]) {
+        lv_obj_t *a = lv_label_create(col);
+        lv_label_set_text(a, sub);
+    }
 }
 
-/* Barra de línea o entrada: "<prefijo><Linea|Entrada> <n> <estado>" + alias */
-static void bar_create(lv_obj_t *parent, const char *prefix, const char *name,
-                       const panel_bar_t *b, const bar_look_t *lk)
-{
-    char title[96];
-    snprintf(title, sizeof(title), "%s%s%d %s", prefix, name, b->number,
-             (lk->text >= 0 && lk->text < TXT_STATUS_N) ? TXT_STATUS[lk->text] : "");
-    bar_create_text(parent, lk, title, b->alias);
-}
-
-/* ---- Estado general (barstatus) como barras -------------------------------
- * Solo los estados anormales generan barra. Van arriba de líneas y entradas,
- * en este orden (más grave primero). */
-static void status_bar_add(lv_obj_t *list, bar_color_t c, const char *icon, const char *title)
-{
-    bar_look_t lk = { c, icon, -1, 0 };
-    bar_create_text(list, &lk, title, TXT_ST_SUB);
-}
-
-static void refresh_status_bars(lv_obj_t *list, const panel_status_t *s)
+/* Estado general como barras: updateStatusBarIcons() del widget.
+ * (El widget no muestra alarma ni falla general, sirena ni modo manual.) */
+static void add_status_items(const panel_status_t *s)
 {
     if (!s->valid) return;
-    char buf[48];
+    char buf[32];
 
-    if (s->alarma)       status_bar_add(list, C_RED,    LV_SYMBOL_BELL,    TXT_ST_ALARMA);
-    if (s->extincion)    status_bar_add(list, C_RED,    LV_SYMBOL_WARNING, TXT_ST_EXTINCION);
-    if (s->siren)        status_bar_add(list, C_ORANGE, LV_SYMBOL_VOLUME_MAX, TXT_ST_SIRENA);
-    if (s->falla)        status_bar_add(list, C_YELLOW, LV_SYMBOL_WARNING, TXT_ST_FALLA);
-    if (s->tierra)       status_bar_add(list, C_YELLOW, LV_SYMBOL_WARNING, TXT_ST_TIERRA);
-    if (s->desconexion)  status_bar_add(list, C_YELLOW, LV_SYMBOL_CLOSE,   TXT_ST_DESCONEXION);
-    if (!s->alimentacion) status_bar_add(list, C_YELLOW, LV_SYMBOL_CHARGE, TXT_ST_ALIM);
-    if (!s->red)         status_bar_add(list, C_YELLOW, LV_SYMBOL_WIFI,    TXT_ST_RED);
-    /* FLAGFBAT = la central indica falla de batería; se muestra con el % actual */
+    if (s->desconexion) add_item(C_YELLOW, LV_SYMBOL_CLOSE,   TXT_ST_FALLA, TXT_ST_DESCONEXION);
+    if (s->tierra)      add_item(C_YELLOW, LV_SYMBOL_WARNING, TXT_ST_FALLA, TXT_ST_TIERRA);
+    if (s->test)        add_item(C_GREEN,  LV_SYMBOL_SETTINGS, TXT_ST_TEST, "");
+    if (s->extincion)   add_item(C_RED,    LV_SYMBOL_WARNING, TXT_ST_EXTINCION, "");
     if (s->flag_fbat) {
-        snprintf(buf, sizeof(buf), "%s %d %%", TXT_ST_BATERIA, s->bateria);
-        status_bar_add(list, C_YELLOW, LV_SYMBOL_BATTERY_1, buf);
+        snprintf(buf, sizeof(buf), TXT_ST_BAT_FALLA, s->bateria);
+        add_item(C_YELLOW, LV_SYMBOL_BATTERY_EMPTY, TXT_ST_BATERIA, buf);
     }
-    /* Módulos: -1 = no instalado (se ignora), 0 = falla (barra), 1 = normal */
-    const struct { int st; const char *name; } mods[] = {
-        { s->modulo_i1, "I1" }, { s->modulo_i2, "I2" }, { s->modulo_o1, "O1" }, { s->modulo_o2, "O2" },
-    };
-    for (int i = 0; i < 4; i++) {
-        if (mods[i].st != 0) continue;
-        snprintf(buf, sizeof(buf), TXT_ST_MODULO, mods[i].name);
-        status_bar_add(list, C_YELLOW, LV_SYMBOL_CLOSE, buf);
+    if (!s->alimentacion) add_item(C_YELLOW, LV_SYMBOL_CHARGE, TXT_ST_ALIM, TXT_ST_FALLA);
+    if (!s->red)          add_item(C_YELLOW, LV_SYMBOL_WIFI,   TXT_ST_RED,  TXT_ST_FALLA);
+
+    /* Módulos (solo equipo modular): -1 no instalado, 0 falla -> barra, 1 normal */
+    if (s->modular) {
+        if (s->modulo_i1 == 0) add_item(C_YELLOW, LV_SYMBOL_CLOSE, "M_I1", TXT_ST_DESCONEXION);
+        if (s->modulo_i2 == 0) add_item(C_YELLOW, LV_SYMBOL_CLOSE, "M_I2", TXT_ST_DESCONEXION);
+        if (s->modulo_o1 == 0) add_item(C_YELLOW, LV_SYMBOL_CLOSE, "M_O1", TXT_ST_DESCONEXION);
+        if (s->modulo_o2 == 0) add_item(C_YELLOW, LV_SYMBOL_CLOSE, "M_O2", TXT_ST_DESCONEXION);
     }
-    if (s->manual_mode)  status_bar_add(list, C_ORANGE, LV_SYMBOL_SETTINGS, TXT_ST_MANUAL);
-    if (s->test)         status_bar_add(list, C_ORANGE, LV_SYMBOL_SETTINGS, TXT_ST_TEST);
 }
 
-/* Borra todas las barras de bars_list menos fault_conn/fault_time y las vuelve a crear:
- * estado general, líneas y entradas */
+/* Borra todas las barras de bars_list menos fault_conn/fault_time y las vuelve a crear */
 static void refresh_bars(const panel_model_t *m)
 {
     lv_obj_t *list = objects.bars_list;
@@ -259,39 +285,37 @@ static void refresh_bars(const panel_model_t *m)
         if (c != objects.fault_conn && c != objects.fault_time) lv_obj_delete(c);
     }
 
-    /* Estado general primero */
-    refresh_status_bars(list, &m->status);
+    char title[64];
+    s_n_items = 0;
+    add_status_items(&m->status);
 
-    bar_item_t items[PANEL_MAX_LINES > PANEL_MAX_INPUTS ? PANEL_MAX_LINES : PANEL_MAX_INPUTS];
-
-    /* Líneas */
-    int n = 0;
+    /* Líneas: "Linea <n> <estado>" + alias */
     for (int i = 0; i < m->n_lines; i++) {
-        if (m->lines[i].enable != 1) continue;
-        items[n].b = &m->lines[i];
-        items[n].look = line_look(m->lines[i].status);
-        n++;
+        const panel_bar_t *b = &m->lines[i];
+        if (b->enable != 1 || !line_status_known(b->status)) continue;    /* 0 o código desconocido */
+        bar_look_t lk = line_look(b->status);
+        snprintf(title, sizeof(title), "%s%d %s", TXT_LINE_NAME, b->number, status_text(b->status));
+        add_item(lk.color, lk.icon, title, b->alias);
     }
-    qsort(items, n, sizeof(items[0]), cmp_items);
-    for (int i = 0; i < n; i++)
-        bar_create(list, "", TXT_LINE_NAME, items[i].b, &items[i].look);
 
-    /* Entradas, debajo de las líneas. Prefijo de módulo: 1-7 M_I1, 8-14 M_I2 */
-    n = 0;
+    /* Entradas: modular -> "M_I<mod> Entrada <1..7> <estado>"; si no "Entrada <n> <estado>" */
     for (int i = 0; i < m->n_inputs; i++) {
-        if (m->inputs[i].enable != 1) continue;
-        bar_look_t lk = input_look(m->inputs[i].status);
-        if (lk.rank < 0) continue;            /* 10/11: solo aviso */
-        items[n].b = &m->inputs[i];
-        items[n].look = lk;
-        n++;
+        const panel_bar_t *b = &m->inputs[i];
+        if (b->enable != 1 || !input_status_known(b->status)) continue;   /* 0 o código desconocido */
+        bar_look_t lk = input_look(b->status);
+        if (m->status.modular && b->number >= 1) {
+            int mod = (b->number + 6) / 7;            /* Math.ceil(n / 7) */
+            int num = ((b->number - 1) % 7) + 1;
+            snprintf(title, sizeof(title), "M_I%d %s%d %s", mod, TXT_INPUT_NAME, num, status_text(b->status));
+        } else {
+            snprintf(title, sizeof(title), "%s%d %s", TXT_INPUT_NAME, b->number, status_text(b->status));
+        }
+        add_item(lk.color, lk.icon, title, b->alias);
     }
-    qsort(items, n, sizeof(items[0]), cmp_items);
-    for (int i = 0; i < n; i++) {
-        int num = items[i].b->number;
-        const char *pre = (num >= 1 && num <= 7) ? "M_I1 - " : (num >= 8 && num <= 14) ? "M_I2 - " : "";
-        bar_create(list, pre, TXT_INPUT_NAME, items[i].b, &items[i].look);
-    }
+
+    qsort(s_items, s_n_items, sizeof(s_items[0]), cmp_items);
+    for (int i = 0; i < s_n_items; i++)
+        bar_create_text(list, &s_items[i].look, s_items[i].title, s_items[i].text);
 
     check_input_notices(m);
 }

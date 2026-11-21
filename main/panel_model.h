@@ -17,6 +17,7 @@ typedef struct {
     int  firmware;
     int  modulo_i1, modulo_i2, modulo_o1, modulo_o2;   /* -1 = no instalado */
     bool manual_mode;        /* false = automático */
+    bool modular;            /* llegó alguna clave MODULO_*: equipo modular */
     bool valid;              /* llegó al menos un barstatus */
 } panel_status_t;
 

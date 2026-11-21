@@ -1066,9 +1066,10 @@
       "selectionFront": {},
       "selectionBack": {
         "0": {
-          "1": {
+          "0": {
             "$selected": true
-          }
+          },
+          "1": {}
         }
       },
       "transform": {

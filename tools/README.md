@@ -47,6 +47,7 @@ Al conectarse envía el estado completo una vez.
 | `a` | Enviar todo |
 | `f <CLAVE>` | Alternar un flag de `barstatus` y enviar (`f ALARMA`, `f FALLA`, `f MANUALMODE`…) |
 | `b <0-100>` | Batería % y enviar |
+| `m <MOD> <v>` | Estado de un módulo y enviar (`m O2 0`). MOD: `I1` `I2` `O1` `O2`; v: `1` normal, `0` falla (barra), `-1` no instalado |
 | `L <n> <estado>` | Estado de la línea `n` (`L 1 2` = línea 1 en alarma) |
 | `E <n> <estado>` | Estado de la entrada `n` |
 | `le <n> <0\|1>` | Habilitar o deshabilitar la línea `n` |

@@ -77,6 +77,10 @@ static void parse_status(const cJSON *b)
     s->modulo_o1    = jint(b, "MODULO_O1", -1);
     s->modulo_o2    = jint(b, "MODULO_O2", -1);
     s->manual_mode  = jbool(b, "MANUALMODE", false);
+    s->modular      = cJSON_GetObjectItemCaseSensitive(b, "MODULO_I1") ||
+                      cJSON_GetObjectItemCaseSensitive(b, "MODULO_I2") ||
+                      cJSON_GetObjectItemCaseSensitive(b, "MODULO_O1") ||
+                      cJSON_GetObjectItemCaseSensitive(b, "MODULO_O2");
     s->valid        = true;
 }
 

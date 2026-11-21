@@ -231,7 +231,8 @@ ESTADO GENERAL (barra superior)
                  claves: ALARMA FALLA DESCONEXION TIERRA TEST EXTINCION
                          ALIMENTACION RED MANUALMODE SIREN FLAGFBAT
   b <0-100>      batería %                          ej: b 30
-  raw {"barstatus":{"MODULO_I1":1}}   módulo: 1 conectado, 0 desconectado, -1 no instalado
+  m <MOD> <v>    estado de módulo y enviar         ej: m O2 0
+                 MOD: I1 I2 O1 O2   v: 1 normal, 0 falla (barra), -1 no instalado
 
 LÍNEAS / ENTRADAS (lista de barras)
   le <n> <0|1>   habilitar/ocultar línea n          ej: le 3 1
@@ -303,6 +304,18 @@ def handle(link: Link, line: str) -> bool:
             link.send(msg_barstatus(), "barstatus")
         elif c == "b":
             bs["BATERIA"] = max(0, min(100, int(p[1])))
+            link.send(msg_barstatus(), "barstatus")
+        elif c == "m":
+            k = "MODULO_" + p[1].upper()
+            if k not in bs:
+                print("módulos: I1 I2 O1 O2")
+                return True
+            v = int(p[2])
+            if v not in (-1, 0, 1):
+                print("valor: 1 normal, 0 falla, -1 no instalado")
+                return True
+            bs[k] = v
+            print(f"   {k} = {v}")
             link.send(msg_barstatus(), "barstatus")
         elif c in ("L", "E"):
             lst = state["LINEAS"] if c == "L" else state["ENTRADAS"]
