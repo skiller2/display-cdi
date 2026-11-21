@@ -5,6 +5,8 @@
  */
 
 #include <time.h>
+#include <stdlib.h>
+#include <sys/time.h>
 #include <string.h>
 
 #include "esp_event.h"
@@ -30,6 +32,38 @@
 #include "panel_keypad.h"
 #include "screens.h"
 
+/* ---- Configuración ---- */
+#define INACTIVITY_TIMEOUT_MS DISPLAY_DEFAULT_INACTIVITY_TIMEOUT_MS
+#define LOG_MAX_LINES         100        /* líneas máx. en la lista de logs */
+#define NAV_DEPTH             8          /* pantallas recordadas para "Volver" */
+
+/* UART con la central */
+#define UART_PORT     UART_NUM_2
+#define UART_BUF_SIZE 512
+/* UART2 header pins on ESP32-S3-Touch-LCD-7 (adjust if your wiring differs) */
+#define UART_RX_GPIO  44
+#define UART_TX_GPIO  43
+
+/* Trama: [magic u16][len u16][crc16 u16][payload JSON] */
+#define FRAME_MAGIC         0x55AA
+#define FRAME_MAX_PAYLOAD   2048   /* el emisor usa char json_data[2048] */
+#define FRAME_RX_TIMEOUT_MS 300    /* trama a medias sin bytes nuevos -> descartar */
+
+/* Falla de hora: se compara TIMESTAMP de la central con la hora del display */
+#define TIME_DIFF_MAX_S        5            /* diferencia máx. tolerada (s) */
+#define TIME_VALID_MIN_EPOCH   1704067200LL /* 2024-01-01: antes de esto se asume hora no seteada */
+#define TIME_NVS_NAMESPACE     "disp_time"  /* NVS: última hora conocida (sobrevive a reinicios) */
+#define TIME_NVS_KEY           "last_ts"
+#define TIME_SAVE_PERIOD_S     3600         /* cada cuánto se guarda la hora en NVS */
+#define TIME_RESYNC_PERIOD_S   86400        /* cada cuánto se vuelve a poner en hora con la central (24 h) */
+
+/* Zona horaria (formato POSIX TZ): -03:00 sin horario de verano */
+#define TIMEZONE_POSIX "<-03>3"
+
+/* Keepalive: cada KEEPALIVE_MS se pregunta la hora a la central */
+#define KEEPALIVE_MS  1000
+#define KEEPALIVE_CMD "{\"cmdGetData\":\"SSI_TIEMPO\"}"
+
 /* ui_tick() sincroniza variables/flows de EEZ. Corre como timer de LVGL,
  * así se ejecuta dentro de la tarea de LVGL con el lock ya tomado. */
 static void eez_ui_tick_cb(lv_timer_t *t)
@@ -40,17 +74,8 @@ static void eez_ui_tick_cb(lv_timer_t *t)
 
 static esp_lcd_panel_handle_t g_panel;
 
-
-#define INACTIVITY_TIMEOUT_MS DISPLAY_DEFAULT_INACTIVITY_TIMEOUT_MS
-
-#define UART_PORT     UART_NUM_2
-#define UART_BUF_SIZE 512
-/* UART2 header pins on ESP32-S3-Touch-LCD-7 (adjust if your wiring differs) */
-#define UART_RX_GPIO  44
-#define UART_TX_GPIO  43
 static uint32_t last_activity = 0;
 static lv_obj_t *cont_scroll = NULL;
-#define LOG_MAX_LINES 100
 
 static void reset_inactivity_timer(void)
 {
@@ -158,14 +183,11 @@ void uart_init(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Recepción de tramas del otro micro:
+ * Recepción de tramas de la otra central:
  *   [magic u16 = 0x55AA][len u16][crc16 u16][payload JSON (len bytes)]
  * Todo little-endian (en el cable: AA 55 LL LL CC CC ...).
  * CRC = esp_crc16_le(UINT16_MAX, payload, len), igual que el emisor.
  * ------------------------------------------------------------------------- */
-#define FRAME_MAGIC        0x55AA
-#define FRAME_MAX_PAYLOAD  2048   /* el emisor usa char json_data[2048] */
-#define FRAME_RX_TIMEOUT_MS 300   /* trama a medias sin bytes nuevos -> descartar */
 
 typedef struct __attribute__((packed)) {
     uint16_t magic;
@@ -194,10 +216,98 @@ typedef struct {
 /* static: 2 KB fuera del stack de la tarea de LVGL */
 static frame_rx_t s_rx;
 
+/* ---- Hora persistente (NVS) ---------------------------------------------
+ * Sin RTC, el reloj arranca en 1970. Se guarda la última hora conocida en NVS
+ * y se restaura al arrancar (aproximada: no cuenta el tiempo apagado). La hora
+ * se verifica con la central: la primera respuesta válida tras el arranque
+ * pone el reloj en hora; de ahí en más solo se vigila la diferencia. */
+static bool    s_time_synced;      /* ya se puso en hora con la central desde el arranque */
+static int64_t s_time_saved_s;     /* esp_timer (s) del último guardado en NVS */
+static int64_t s_time_synced_s;    /* esp_timer (s) de la última puesta en hora con la central */
+
+static void time_save_to_nvs(void)
+{
+    time_t now = time(NULL);
+    if (now < TIME_VALID_MIN_EPOCH) return;
+    nvs_handle_t h;
+    if (nvs_open(TIME_NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) return;
+    if (nvs_set_i64(h, TIME_NVS_KEY, (int64_t)now) == ESP_OK) nvs_commit(h);
+    nvs_close(h);
+    s_time_saved_s = esp_timer_get_time() / 1000000;
+}
+
+/* Llamar una vez al arrancar, después de nvs_flash_init() y tzset(). */
+static void time_restore_from_nvs(void)
+{
+    nvs_handle_t h;
+    int64_t ts = 0;
+    if (nvs_open(TIME_NVS_NAMESPACE, NVS_READONLY, &h) != ESP_OK) return;
+    esp_err_t err = nvs_get_i64(h, TIME_NVS_KEY, &ts);
+    nvs_close(h);
+    if (err != ESP_OK || ts < TIME_VALID_MIN_EPOCH) return;
+    if (time(NULL) >= TIME_VALID_MIN_EPOCH) return;   /* ya hay hora válida */
+
+    struct timeval tv = { .tv_sec = (time_t)ts, .tv_usec = 0 };
+    settimeofday(&tv, NULL);
+    ESP_LOGI("TIME", "hora restaurada desde NVS (aproximada)");
+}
+
+/* Controla "TIMESTAMP" (epoch, segundos) de la central contra la hora del display.
+ * - Primera respuesta tras el arranque, y luego cada TIME_RESYNC_PERIOD_S: pone el
+ *   reloj en hora con la central (se limpia la falla) y la guarda en NVS.
+ * - Entre resincronizaciones: si difieren más de TIME_DIFF_MAX_S marca la falla
+ *   de hora (barra en Main) sin tocar el reloj. Con hora correcta, la guarda en
+ *   NVS cada TIME_SAVE_PERIOD_S. */
+static void check_time_diff(const char *json)
+{
+    const char *p = strstr(json, "\"TIMESTAMP\"");
+    if (!p || !(p = strchr(p, ':'))) return;
+    long long ts = strtoll(p + 1, NULL, 10);
+
+    if (ts < TIME_VALID_MIN_EPOCH) {            /* la central no tiene hora válida */
+        panel_model_set_time_diff(0, false, false);
+        return;
+    }
+
+    int64_t up_s = esp_timer_get_time() / 1000000;
+    if (!s_time_synced || up_s - s_time_synced_s >= TIME_RESYNC_PERIOD_S) {
+        long long adj = ts - (long long)time(NULL);
+        struct timeval tv = { .tv_sec = (time_t)ts, .tv_usec = 0 };
+        settimeofday(&tv, NULL);
+        if (s_time_synced) ESP_LOGI("TIME", "hora resincronizada con la central (ajuste %+lld s)", adj);
+        else               ESP_LOGI("TIME", "hora puesta con la central");
+        s_time_synced   = true;
+        s_time_synced_s = up_s;
+        time_save_to_nvs();
+        panel_model_set_time_diff(0, true, false);
+        return;
+    }
+
+    long long diff = ts - (long long)time(NULL);
+    bool fault = diff > TIME_DIFF_MAX_S || diff < -TIME_DIFF_MAX_S;
+    if (fault != panel_model_get()->time_fault) {
+        /* El formato de ESP_LOGx debe ser literal: no se puede elegir con "?:" */
+        if (fault) ESP_LOGW("TIME", "falla de hora: central %+lld s respecto del display", diff);
+        else       ESP_LOGI("TIME", "hora de la central y del display coinciden (%+lld s)", diff);
+    }
+    panel_model_set_time_diff((int32_t)diff, true, fault);
+
+    /* Solo se guarda una hora confiable (sin falla) */
+    if (!fault && up_s - s_time_saved_s >= TIME_SAVE_PERIOD_S)
+        time_save_to_nvs();
+}
+
 /* Se llama con una trama válida. Corre dentro de un timer de LVGL,
  * así que se puede tocar la UI directamente. */
 static void on_frame_payload(const char *json, size_t len)
 {
+    /* Respuesta al keepalive ({"TIEMPO":...,"MAC":...,"TIMESTAMP":...}), llega
+     * cada 1 s: renueva la conexión y controla la diferencia de hora; no se loguea. */
+    if (strstr(json, "\"TIEMPO\"")) {
+        panel_model_feed(json, len, lv_tick_get());
+        check_time_diff(json);
+        return;
+    }
     ESP_LOGI("RX", "JSON(%u): %.*s", (unsigned)len, (int)len, json);
     log_line_to_display(json);
     int upd = panel_model_feed(json, len, lv_tick_get());
@@ -298,7 +408,8 @@ static void uart_poll_timer_cb(lv_timer_t *timer)
 }
 
 /* Envía un JSON por UART con el formato de trama de frame_rx_feed:
- * [hdr: magic 0x55AA | len | crc16][JSON]. Devuelve true si salió completo. */
+ * [hdr: magic 0x55AA | len | crc16][JSON]. Devuelve true si salió completo.
+ * Sin log en pantalla (la usa también el keepalive, cada 1 s). */
 static bool uart_send_json(const char *msg)
 {
     serial_frame_hdr_t hdr;
@@ -310,11 +421,19 @@ static bool uart_send_json(const char *msg)
     n += uart_write_bytes(UART_PORT, msg, hdr.len);
     bool ok = n == (int)(sizeof(hdr) + hdr.len);
 
-    ESP_LOGI("UART", "Enviado %s (%d bytes, crc=%04X)", msg, n, hdr.crc16);
-    char line[64];
-    snprintf(line, sizeof(line), ok ? ">> %s enviado" : ">> Error enviando %s", msg);
-    log_line_to_display(line);
+    if (ok) ESP_LOGD("UART", "Enviado %s", msg);
+    else    ESP_LOGW("UART", "Error enviando %s", msg);
     return ok;
+}
+
+/* Keepalive con la central: cada 1 s pregunta la hora. La respuesta
+ * ({"TIEMPO":...}) pasa por on_frame_payload y renueva last_rx_ms; si la
+ * central deja de contestar, panel_ui muestra "Sin conexion con la central". */
+
+static void keepalive_timer_cb(lv_timer_t *timer)
+{
+    (void)timer;
+    uart_send_json(KEEPALIVE_CMD);
 }
 
 /* ---- Acciones del encabezado (spec 001, etapas 7-8). Textos de dictionary.js ---- */
@@ -352,7 +471,6 @@ static void go_screen(enum ScreensEnum id)
 
 /* Historial de pantallas para "Volver". Se registra con SCREEN_LOADED, así
  * cuenta también los cambios hechos por flows de EEZ (botones de Main). */
-#define NAV_DEPTH 8
 static enum ScreensEnum nav_stack[NAV_DEPTH];
 static int nav_n;
 static enum ScreensEnum nav_cur = SCREEN_ID_MAIN;
@@ -419,8 +537,13 @@ void app_main(void)
     esp_lcd_panel_handle_t panel_handle = NULL;
     esp_lcd_touch_handle_t touch_handle = NULL;
 
+    /* Zona horaria: localtime() muestra hora local en vez de UTC */
+    setenv("TZ", TIMEZONE_POSIX, 1);
+    tzset();
+
     /* Wi-Fi primero: necesita RAM interna contigua que el LCD/LVGL consumen después */
     ESP_ERROR_CHECK(nvs_flash_init());
+    time_restore_from_nvs();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     wifi_init();
@@ -467,6 +590,7 @@ void app_main(void)
         lv_obj_set_flex_flow(cont_scroll, LV_FLEX_FLOW_COLUMN);
         lv_obj_set_scrollbar_mode(cont_scroll, LV_SCROLLBAR_MODE_AUTO);
         lv_timer_create(uart_poll_timer_cb, 50, NULL);
+        lv_timer_create(keepalive_timer_cb, KEEPALIVE_MS, NULL);
 
         /* Encabezado Main (spec 001, etapa 2). ACK directo; Reset/Test/Config
          * pasarán por el teclado PIN en la etapa 7. */

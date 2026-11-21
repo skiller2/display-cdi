@@ -16,9 +16,36 @@
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "panel_model.h"
 #include "sys_info.h"
 
 #include "ui/screens.h"
+
+// ---- Configuracion (defines) ----
+
+// Velocidad de la flash, tomada de la config de compilacion (menuconfig).
+#if CONFIG_ESPTOOLPY_FLASHFREQ_40M
+#define FLASH_SPEED_STR "40M"
+#elif CONFIG_ESPTOOLPY_FLASHFREQ_80M
+#define FLASH_SPEED_STR "80M"
+#elif CONFIG_ESPTOOLPY_FLASHFREQ_120M
+#define FLASH_SPEED_STR "120M"
+#else
+#define FLASH_SPEED_STR "?"
+#endif
+
+// Modo de la flash (QIO/QOUT/DIO/DOUT), tomado de la config de compilacion.
+#if CONFIG_ESPTOOLPY_FLASHMODE_QIO
+#define FLASH_MODE_STR "QIO"
+#elif CONFIG_ESPTOOLPY_FLASHMODE_QOUT
+#define FLASH_MODE_STR "QOUT"
+#elif CONFIG_ESPTOOLPY_FLASHMODE_DIO
+#define FLASH_MODE_STR "DIO"
+#elif CONFIG_ESPTOOLPY_FLASHMODE_DOUT
+#define FLASH_MODE_STR "DOUT"
+#else
+#define FLASH_MODE_STR "?"
+#endif
 
 // ---- Sistema ----
 
@@ -69,29 +96,6 @@ static void format_bytes(char *buf, size_t len, uint32_t bytes)
     }
 }
 
-// Velocidad de la flash, tomada de la config de compilacion (menuconfig).
-#if CONFIG_ESPTOOLPY_FLASHFREQ_40M
-#define FLASH_SPEED_STR "40M"
-#elif CONFIG_ESPTOOLPY_FLASHFREQ_80M
-#define FLASH_SPEED_STR "80M"
-#elif CONFIG_ESPTOOLPY_FLASHFREQ_120M
-#define FLASH_SPEED_STR "120M"
-#else
-#define FLASH_SPEED_STR "?"
-#endif
-
-// Modo de la flash (QIO/QOUT/DIO/DOUT), tomado de la config de compilacion.
-#if CONFIG_ESPTOOLPY_FLASHMODE_QIO
-#define FLASH_MODE_STR "QIO"
-#elif CONFIG_ESPTOOLPY_FLASHMODE_QOUT
-#define FLASH_MODE_STR "QOUT"
-#elif CONFIG_ESPTOOLPY_FLASHMODE_DIO
-#define FLASH_MODE_STR "DIO"
-#elif CONFIG_ESPTOOLPY_FLASHMODE_DOUT
-#define FLASH_MODE_STR "DOUT"
-#else
-#define FLASH_MODE_STR "?"
-#endif
 
 // ---- Rendimiento ----
 
@@ -262,8 +266,14 @@ static void sys_info_timer_cb(lv_timer_t *timer)
         time(&now);
         localtime_r(&now, &tm);
         if (tm.tm_year + 1900 >= 2024) {
-            snprintf(line, sizeof(line), "System time: %04d-%02d-%02d %02d:%02d:%02d",
-                     tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            int n = snprintf(line, sizeof(line), "System time: %04d-%02d-%02d %02d:%02d:%02d",
+                             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            // Diferencia con la hora de la central (la actualiza main.c con cada keepalive)
+            const panel_model_t *pm = panel_model_get();
+            if (pm->time_diff_valid && n > 0 && n < (int)sizeof(line)) {
+                snprintf(line + n, sizeof(line) - n, "  central %+d s%s",
+                         (int)pm->time_diff_s, pm->time_fault ? "  FALLA" : "");
+            }
         } else {
             snprintf(line, sizeof(line), "System time: not set");
         }

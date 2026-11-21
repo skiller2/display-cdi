@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simulador del micro CDI por UART (spec 001).
+Simulador de la central CDI por UART (spec 001).
 
 Trama (little-endian):  [AA 55][len u16][crc16 u16][JSON]
 CRC = esp_crc16_le(0xFFFF, payload)  -> CRC-16 reflejado poly 0x8408,
@@ -8,11 +8,16 @@ CRC = esp_crc16_le(0xFFFF, payload)  -> CRC-16 reflejado poly 0x8408,
 
 Uso:
     pip install pyserial
-    python tools/sim_micro.py COM5            # menú interactivo
-    python tools/sim_micro.py COM5 --auto 2   # manda estado cada 2 s
+    python tools/sim_central.py COM5            # menú interactivo
+    python tools/sim_central.py COM5 --auto 2   # manda estado cada 2 s
 
 Lee también lo que manda el display (cmdACK, cmdReset, cmdTest, getStatus)
 y responde a getStatus con el estado actual.
+
+Keepalive: el display manda {"cmdGetData":"SSI_TIEMPO"} cada 1 s; el simulador
+responde {"TIEMPO":...,"MAC":...,"TIMESTAMP":...}. Con 'p' deja de responder
+(el display muestra "Sin conexion con la central" a los 5 s). Con 'o <seg>'
+desfasa el TIMESTAMP para probar la falla de hora del display (> 5 s).
 """
 import argparse
 import base64
@@ -22,6 +27,7 @@ import struct
 import sys
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 
 try:
     import serial
@@ -116,6 +122,15 @@ def msg_bars():
     return {"MAC": MAC, "LINEAS": state["LINEAS"], "ENTRADAS": state["ENTRADAS"]}
 
 
+def msg_time(offset: int = 0):
+    """Respuesta a {"cmdGetData":"SSI_TIEMPO"} (igual que createJsonTime de la central)."""
+    now = int(time.time()) + offset
+    # Formato real de la central: ISO 8601 con zona fija -03:00; TIMESTAMP en UTC
+    tz = timezone(timedelta(hours=-3))
+    return {"TIEMPO": datetime.fromtimestamp(now, tz).isoformat(timespec="seconds"),
+            "MAC": MAC, "TIMESTAMP": now}
+
+
 def msg_users():
     raw = json.dumps(state["USERS"], separators=(",", ":")).encode()
     return {"MAC": MAC, "USR": base64.b64encode(raw).decode()}
@@ -127,16 +142,21 @@ class Link:
         self.ser = serial.Serial(port, baud, timeout=0.1)
         self.lock = threading.Lock()
         self.verbose = verbose
-        self.paused = False          # 'p': simula micro desconectado
+        self.paused = False          # 'p': simula central desconectada (no responde la hora)
+        self.time_offset = 0         # 'o': desfase en segundos del TIMESTAMP
+        self.time_reqs = 0           # pedidos de hora (keepalive) recibidos
+        self.last_time_req = 0.0
         self.reader = FrameReader()
         threading.Thread(target=self._rx_loop, daemon=True).start()
 
-    def send(self, obj, label=""):
+    def send(self, obj, label="", show_json=False):
+        """Envía un JSON y lo muestra. show_json=True imprime siempre el contenido
+        (keepalive); si no, solo con 'v' (verbose)."""
         frame = build_frame(obj)
         with self.lock:
             self.ser.write(frame)
         print(f">> {label or 'json'} ({len(frame) - 6} B)")
-        if self.verbose:
+        if show_json or self.verbose:
             print("   ", frame[6:].decode())
 
     def send_all(self):
@@ -155,12 +175,24 @@ class Link:
                 continue
             for payload, ok in self.reader.feed(data):
                 txt = payload.decode(errors="replace")
-                print(f"\n<< {'OK ' if ok else 'CRC MAL '}{txt}")
-                if not ok:
+                obj = None
+                if ok:
+                    try:
+                        obj = json.loads(txt)
+                    except ValueError:
+                        pass
+                # Keepalive del display (cada 1 s): se responde y se muestra lo enviado
+                if isinstance(obj, dict) and obj.get("cmdGetData") == "SSI_TIEMPO":
+                    self.time_reqs += 1
+                    self.last_time_req = time.time()
+                    if self.paused:
+                        print("-- keepalive: pedido de hora recibido, NO se responde (pausado)")
+                    else:
+                        self.send(msg_time(self.time_offset), "TIEMPO (keepalive)", show_json=True)
+                    print("> ", end="", flush=True)
                     continue
-                try:
-                    obj = json.loads(txt)
-                except ValueError:
+                print(f"\n<< {'OK ' if ok else 'CRC MAL '}{txt}")
+                if not isinstance(obj, dict):
                     continue
                 if obj.get("cmd") == "getStatus":
                     print("   -> respondiendo getStatus")
@@ -211,7 +243,10 @@ LÍNEAS / ENTRADAS (lista de barras)
 
 PRUEBAS
   r              todo al azar y enviar
-  p              pausar/reanudar keepalive -> a los 10 s "Sin conexion con el micro"
+  p              dejar de responder el keepalive -> a los 5 s "Sin conexion con la central"
+  t              enviar TIEMPO ahora (sin que lo pida el display)
+  o <seg>        desfasar el TIMESTAMP de TIEMPO (> 5 s -> falla de hora en el display)  ej: o 10
+  k              estado del keepalive (pedidos de hora recibidos)
   bad            trama con CRC roto (el display la descarta)
   big            trama > 2048 B (el display la descarta)
   raw <json>     enviar un JSON cualquiera
@@ -299,7 +334,16 @@ def handle(link: Link, line: str) -> bool:
             print("   verbose", link.verbose)
         elif c == "p":
             link.paused = not link.paused
-            print("   keepalive", "PAUSADO (simula micro mudo)" if link.paused else "activo")
+            print("   keepalive", "PAUSADO (simula central muda)" if link.paused else "activo")
+        elif c == "t":
+            link.send(msg_time(link.time_offset), "TIEMPO")
+        elif c == "o":
+            link.time_offset = int(p[1])
+            print(f"   TIMESTAMP desfasado {link.time_offset} s")
+        elif c == "k":
+            ago = f"hace {time.time() - link.last_time_req:.1f} s" if link.time_reqs else "nunca"
+            print(f"   pedidos de hora: {link.time_reqs} (último {ago}), "
+                  f"{'PAUSADO' if link.paused else 'respondiendo'}, desfase {link.time_offset} s")
         else:
             print("? (h = ayuda)")
     except (IndexError, ValueError, KeyError) as e:
@@ -308,14 +352,15 @@ def handle(link: Link, line: str) -> bool:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Simulador del micro CDI por UART")
+    ap = argparse.ArgumentParser(description="Simulador de la central CDI por UART")
     ap.add_argument("port", help="puerto serie, ej: COM5 o /dev/ttyUSB0")
     ap.add_argument("--baud", type=int, default=9600)
     ap.add_argument("--auto", type=float, metavar="SEG",
                     help="enviar estado cada SEG segundos (sin menú)")
     ap.add_argument("-v", "--verbose", action="store_true", help="mostrar JSON enviado")
-    ap.add_argument("--keepalive", type=float, default=3, metavar="SEG",
-                    help="en modo menú, reenviar barstatus cada SEG s en silencio (0 = no). Default 3")
+    ap.add_argument("--keepalive", type=float, default=0, metavar="SEG",
+                    help="en modo menú, reenviar barstatus cada SEG s en silencio (0 = no, default). "
+                         "No hace falta: el display ya pide la hora cada 1 s y eso mantiene el enlace")
     a = ap.parse_args()
 
     link = Link(a.port, a.baud, a.verbose)
@@ -335,8 +380,7 @@ def main():
             while True:
                 time.sleep(a.keepalive)
                 if not link.paused:
-                    with link.lock:
-                        link.ser.write(build_frame(msg_barstatus()))
+                    link.send(msg_barstatus(), "barstatus (keepalive)", show_json=True)
         threading.Thread(target=keepalive, daemon=True).start()
     try:
         while True:

@@ -7,7 +7,7 @@
 #include "ui/screens.h"
 
 #define REFRESH_MS      200
-#define CONN_TIMEOUT_MS 10000   /* sin JSON en este tiempo -> "Sin conexion con el micro" */
+#define CONN_TIMEOUT_MS 5000    /* sin JSON en este tiempo -> "Sin conexion con la central" */
 
 static void show(lv_obj_t *o, bool on)
 {
@@ -239,14 +239,14 @@ static void bar_create(lv_obj_t *parent, const char *prefix, const char *name,
     lv_label_set_text(a, b->alias);
 }
 
-/* Borra todas las barras de bars_list menos fault_conn y las vuelve a crear */
+/* Borra todas las barras de bars_list menos fault_conn/fault_time y las vuelve a crear */
 static void refresh_bars(const panel_model_t *m)
 {
     lv_obj_t *list = objects.bars_list;
     if (!list) return;
     for (int i = (int)lv_obj_get_child_count(list) - 1; i >= 0; i--) {
         lv_obj_t *c = lv_obj_get_child(list, i);
-        if (c != objects.fault_conn) lv_obj_delete(c);
+        if (c != objects.fault_conn && c != objects.fault_time) lv_obj_delete(c);
     }
 
     bar_item_t items[PANEL_MAX_LINES > PANEL_MAX_INPUTS ? PANEL_MAX_LINES : PANEL_MAX_INPUTS];
@@ -289,9 +289,11 @@ static void refresh_timer_cb(lv_timer_t *t)
     static uint32_t drawn = UINT32_MAX;
     const panel_model_t *m = panel_model_get();
 
-    /* Conexión con el micro: nunca recibió nada, o pasó el timeout */
+    /* Conexión con la central: nunca recibió nada, o pasó el timeout */
     bool conn_ok = m->version > 0 && lv_tick_elaps(m->last_rx_ms) < CONN_TIMEOUT_MS;
     show(objects.fault_conn, !conn_ok);
+    /* Falla de hora: solo con enlace vivo (si no, la diferencia es un dato viejo) */
+    show(objects.fault_time, conn_ok && m->time_fault);
 
     if (m->version == drawn) return;     /* sin cambios */
     drawn = m->version;
@@ -325,6 +327,10 @@ void panel_ui_start(void)
     if (objects.fault_conn) {
         lv_obj_remove_flag(objects.fault_conn, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_width(objects.fault_conn, LV_PCT(100));
+    }
+    if (objects.fault_time) {
+        lv_obj_remove_flag(objects.fault_time, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_width(objects.fault_time, LV_PCT(100));
     }
     lv_timer_create(refresh_timer_cb, REFRESH_MS, NULL);
 }

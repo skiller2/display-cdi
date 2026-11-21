@@ -25,6 +25,13 @@ void panel_model_init(void)
 
 const panel_model_t *panel_model_get(void) { return &m; }
 
+void panel_model_set_time_diff(int32_t diff_s, bool valid, bool fault)
+{
+    m.time_diff_valid = valid;
+    m.time_diff_s     = diff_s;
+    m.time_fault      = valid && fault;
+}
+
 static bool jbool(const cJSON *o, const char *k, bool def)
 {
     const cJSON *v = cJSON_GetObjectItemCaseSensitive(o, k);

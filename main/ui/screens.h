@@ -60,6 +60,9 @@ typedef struct _objects_t {
     lv_obj_t *fault_conn;
     lv_obj_t *obj8;
     lv_obj_t *obj9;
+    lv_obj_t *fault_time;
+    lv_obj_t *fault_time_icon;
+    lv_obj_t *fault_time_txt;
     lv_obj_t *obj10;
     lv_obj_t *logs_back;
     lv_obj_t *obj11;

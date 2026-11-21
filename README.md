@@ -8,7 +8,7 @@ Firmware del display táctil del panel de incendio **CDI**. Muestra en una panta
 | SDK | ESP-IDF **v6.1** |
 | Gráficos | LVGL **9.3** (fijado en `~9.3.0`) + `esp_lvgl_adapter` |
 | Diseño de pantallas | **EEZ Studio** (proyecto `main/ui/Change Screen.eez-project`) |
-| Comunicación | UART con el micro del panel (tramas JSON con CRC) |
+| Comunicación | UART con la central del panel (tramas JSON con CRC) |
 
 ---
 
@@ -38,7 +38,7 @@ idf.py -p COMx flash monitor
 ```
 main/
   main.c            arranque: NVS, Wi-Fi, LCD, LVGL, UI; UART (recepción/envío de tramas); navegación
-  panel_model.c/.h  modelo en RAM del panel: parsea los JSON del micro (cJSON). Sin LVGL
+  panel_model.c/.h  modelo en RAM del panel: parsea los JSON de la central (cJSON). Sin LVGL
   panel_ui.c/.h     pantalla Main: barra de estado, barras de líneas/entradas, avisos
   panel_keypad.c/.h teclado PIN (usuarios de USR o por defecto)
   texts_es.h        textos en español copiados de cdi/web/src/dictionary.js
@@ -49,7 +49,7 @@ main/
 components/
   waveshare_rgb_lcd_port.c/.h   driver del LCD RGB y táctil
 specs/001-main-panel/           spec, plan y tareas de la pantalla Main
-tools/sim_micro.py              simulador del micro por UART (ver tools/README.md)
+tools/sim_central.py              simulador de la central por UART (ver tools/README.md)
 ```
 
 ### Regla principal: **diseño en EEZ, lógica en C**
@@ -96,7 +96,7 @@ La navegación se hace en C (`eez_flow_set_screen`). Los botones **Volver** retr
 
 ---
 
-## 4. Comunicación con el micro (UART)
+## 4. Comunicación con la central (UART)
 
 | | |
 |---|---|
@@ -111,9 +111,9 @@ La navegación se hace en C (`eez_flow_set_screen`). Los botones **Volver** retr
 | `barstatus` | estado general → barra de estado |
 | `LINEAS` / `ENTRADAS` | listas completas → barras de `bars_list` |
 | `USR` | usuarios del PIN (base64 de `[{id, username, levelAccess, code}]`) |
-| `MAC` | MAC del micro (se guarda) |
+| `MAC` | MAC de la central (se guarda) |
 
-Si no llega ningún JSON en 10 s, aparece la barra "Sin conexion con el micro".
+Si no llega ningún JSON en 5 s, aparece la barra "Sin conexion con la central".
 
 ### Comandos que se envían
 `{"cmdACK":{}}`, `{"cmdReset":{}}`, `{"cmdTest":{}}` (con `uart_send_json()` en `main.c`).
@@ -135,10 +135,10 @@ Todo corre dentro de timers de LVGL, así que el lock de LVGL ya está tomado: *
 
 ## 5. Probar sin el panel real
 
-`tools/sim_micro.py` simula el micro desde la PC con un adaptador USB-serie conectado a GPIO43/44:
+`tools/sim_central.py` simula la central desde la PC con un adaptador USB-serie conectado a GPIO43/44:
 
 ```
-python tools/sim_micro.py COM9
+python tools/sim_central.py COM9
 ```
 
 Comandos útiles: `f ALARMA`, `b 30`, `le 3 1`, `L 1 2`, `ie 3 1`, `E 3 1`, `r` (azar), `p` (simular corte). Ver [`tools/README.md`](tools/README.md).
@@ -154,7 +154,7 @@ Usuarios por defecto del PIN: `1111` (nivel 1: Reset/Test) y `2222` (nivel 2: Co
 2. En C: `#include "ui/screens.h"` y usar `objects.mi_widget` (después de `ui_init()`).
 3. `idf.py build`.
 
-**Agregar un dato nuevo del micro**
+**Agregar un dato nuevo de la central**
 1. `panel_model.h`: agregar el campo.
 2. `panel_model.c` → `panel_model_feed()`: leerlo del JSON.
 3. `panel_ui.c`: mostrarlo en `refresh_timer_cb`.

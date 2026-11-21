@@ -43,10 +43,13 @@ typedef struct {
     panel_user_t   users[PANEL_MAX_USERS];
     int            n_users;
     bool           users_from_micro;   /* false = usuarios default */
-    char           mac[24];            /* MAC del micro (última recibida) */
+    char           mac[24];            /* MAC de la central (última recibida) */
     uint32_t       last_rx_ms;         /* tick del último JSON válido */
     uint32_t       version;            /* ++ en cada feed con cambios (para redibujar) */
     uint32_t       bars_version;       /* ++ cuando llegan LINEAS o ENTRADAS */
+    bool           time_diff_valid;    /* hay hora propia y de la central para comparar */
+    int32_t        time_diff_s;        /* TIMESTAMP central - hora del display (s) */
+    bool           time_fault;         /* |diferencia| > TIME_DIFF_MAX_S */
 } panel_model_t;
 
 /* Qué partes actualizó el último feed */
@@ -61,5 +64,7 @@ void panel_model_init(void);
 /* Devuelve máscara PANEL_UPD_*, o -1 si el JSON es inválido. */
 int panel_model_feed(const char *json, size_t len, uint32_t now_ms);
 const panel_model_t *panel_model_get(void);
+/* Diferencia de hora central - display (la calcula main.c con cada TIMESTAMP). */
+void panel_model_set_time_diff(int32_t diff_s, bool valid, bool fault);
 /* Resumen legible de la última actualización (para Logs). */
 void panel_model_summary(int upd, char *buf, size_t len);

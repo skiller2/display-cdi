@@ -12,7 +12,7 @@ El display muestra el estado del panel CDI igual que la página Main de la web: 
 Incluido:
 - Estados generales (`barstatus`): ALARMA, FALLA, DESCONEXION, TIERRA, TEST, BATERIA, ALIMENTACION, RED, EXTINCION, MODULO_*, MANUALMODE.
 - Lista de líneas (`LINEAS`) y entradas (`ENTRADAS`).
-- Barra de falla "sin conexión con el micro".
+- Barra de falla "sin conexión con la central".
 - Teclado PIN con usuarios de `USR`.
 - Acciones ACK, Reset, Test, Config.
 - Textos solo en español.
@@ -30,12 +30,12 @@ Excluido:
 
 ### Formato de mensajes (muestras reales)
 
-Pedido de estados (ESP → micro):
+Pedido de estados (ESP → central):
 ```json
 {"MAC":"D4-8A-FC-C8-46-58","cmd":"getStatus"}
 ```
 
-El micro responde en **JSON separados**: uno lleva `barstatus` y otro `LINEAS` + `ENTRADAS`. Todos traen `MAC`.
+La central responde en **JSON separados**: uno lleva `barstatus` y otro `LINEAS` + `ENTRADAS`. Todos traen `MAC`.
 
 `barstatus`:
 ```json
@@ -57,7 +57,7 @@ El micro responde en **JSON separados**: uno lleva `barstatus` y otro `LINEAS` +
 - Campos usados: `number`, `enable`, `status`, `alias`.
 - `type` y `cam` se ignoran.
 - Cada mensaje reemplaza la lista completa.
-- La MAC del pedido: usar la que trae el micro en `MAC` (se guarda la última recibida). Hasta recibir la primera, usar la MAC del ESP con formato `XX-XX-XX-XX-XX-XX`.
+- La MAC del pedido: usar la que trae la central en `MAC` (se guarda la última recibida). Hasta recibir la primera, usar la MAC del ESP con formato `XX-XX-XX-XX-XX-XX`.
 
 ## Requisitos funcionales
 
@@ -65,7 +65,7 @@ El micro responde en **JSON separados**: uno lleva `barstatus` y otro `LINEAS` +
 |----|-----------|
 | FR-1 | Parsear cada JSON recibido por UART y actualizar un modelo en RAM. |
 | FR-2 | Mostrar indicadores de `barstatus`; actualizar al recibir cambios. |
-| FR-3 | Mostrar barra roja "sin conexión con el micro" si no llega JSON en N s (N configurable, default 10). |
+| FR-3 | Mostrar barra roja "sin conexión con la central" si no llega JSON en N s (N configurable, default 5). |
 | FR-4 | Mostrar una barra por línea con `enable == 1`: color, ícono, `Línea N <estado>`, alias. |
 | FR-5 | Mostrar una barra por entrada con `enable == 1`, con prefijo `M_I1` (1–7) / `M_I2` (8–14). |
 | FR-6 | Ordenar barras como la web (ver tabla de estados). |
@@ -109,14 +109,14 @@ Textos exactos: copiar de `cdi/web/src/dictionary` (`main.bar.*`, `main.serverCo
 
 ## Criterios de aceptación
 
-- Con el micro conectado, la pantalla Main refleja el mismo estado que la web en < 1 s.
+- Con la central conectado, la pantalla Main refleja el mismo estado que la web en < 1 s.
 - Al desconectar la UART aparece la barra de falla en ≤ N s; al reconectar desaparece.
 - Una línea en alarma aparece primero y en rojo.
 - Reset y Test no se ejecutan sin un PIN válido de nivel suficiente.
 
 ## Preguntas abiertas
 
-- [x] Muestra real de JSON del micro (ver "Formato de mensajes").
-- [x] MAC del pedido `getStatus`: la del micro (la última recibida en `MAC`).
+- [x] Muestra real de JSON de la central (ver "Formato de mensajes").
+- [x] MAC del pedido `getStatus`: la de la central (la última recibida en `MAC`).
 - [x] Usuarios: llegan en un JSON con `USR` (ver FR-9).
 - [ ] Destino de Config: ¿Wifi + SysInfo o pantalla nueva?

@@ -4,7 +4,7 @@
 
 #define TXT_LINE_NAME   "Linea "
 #define TXT_INPUT_NAME  "Entrada "
-#define TXT_SERVER_CONN "Sin conexion con el micro"
+#define TXT_SERVER_CONN "Sin conexion con la central"
 
 #define TXT_ACK_INPUT_HDR   "Aceptacion"
 #define TXT_ACK_INPUT_TXT   "Entrada de aceptacion recibida"

@@ -1,6 +1,6 @@
 {
   "navigation": {
-    "selectedUserPageObject": "[Change Screen.eez-project]:/userPages/2",
+    "selectedUserPageObject": "[Change Screen.eez-project]:/userPages/0",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Actions"
     }
@@ -204,16 +204,15 @@
                 {
                   "type": "tab",
                   "id": "#070fca68-2cc2-4768-a8d4-54d0882a8172",
-                  "name": "SysInfo",
+                  "name": "Main",
                   "component": "editor",
                   "config": {
-                    "objectPath": "[Change Screen.eez-project]:/userPages/2",
+                    "objectPath": "[Change Screen.eez-project]:/userPages/0",
                     "permanent": false
                   },
                   "icon": "svg:page"
                 }
-              ],
-              "active": true
+              ]
             },
             {
               "type": "row",
@@ -233,7 +232,8 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ]
+                  ],
+                  "active": true
                 },
                 {
                   "type": "tabset",
@@ -1066,14 +1066,11 @@
       "selectionFront": {},
       "selectionBack": {
         "0": {
-          "0": {
-            "0": {}
-          },
-          "1": {
-            "4": {},
-            "$selected": true
-          },
-          "2": {}
+          "2": {
+            "1": {
+              "$selected": true
+            }
+          }
         }
       },
       "transform": {
@@ -1287,7 +1284,7 @@
   "lvglPart": "MAIN",
   "lvglState": "DEFAULT",
   "lvglExpandedPropertiesGroup": [
-    "PADDING"
+    "BACKGROUND"
   ],
   "showInactiveFlowsInDebugger": true,
   "globalFlowZoom": true,

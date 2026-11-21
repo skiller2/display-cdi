@@ -13,7 +13,7 @@
 objects_t objects;
 
 static const char *screen_names[] = { "Main", "Logs", "SysInfo", "Wifi", "Config" };
-static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "config", "status_bar", "st_left", "st_alarma", "st_falla", "st_desconexion", "st_tierra", "st_test", "st_extincion", "st_bateria", "st_alimentacion", "st_red", "st_mod_i1", "obj0", "st_mod_i2", "obj1", "st_mod_o1", "obj2", "st_mod_o2", "obj3", "st_autman_box", "st_autman", "main_header", "main_title", "btn_ack", "obj4", "btn_reset", "obj5", "btn_test", "obj6", "btn_config", "obj7", "bars_list", "fault_conn", "obj8", "obj9", "obj10", "logs_back", "obj11", "lista_logs", "obj12", "sys_card", "sys_chip", "sys_fw", "sys_uptime", "sys_reset", "sys_heap", "sys_mem", "sys_lvgl", "sys_flash", "sys_cpu", "sys_temp", "sys_net", "sys_time", "obj13", "obj14", "obj15", "obj16", "sys_sep5", "sys_sep6", "sys_sep7", "sys_sep8", "sys_sep9", "sys_sep10", "sys_sep11", "sys_back", "obj17", "obj18", "obj19", "wifi_ssid", "obj20", "wifi_pass", "wifi_connect", "obj21", "wifi_scan", "obj22", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "wifi_back", "obj23", "wifi_kb", "wifi_show", "obj24", "obj25", "cfg_wifi", "obj26", "obj27", "cfg_sysinfo", "obj28", "obj29", "cfg_logs", "obj30", "obj31", "cfg_back", "obj32" };
+static const char *object_names[] = { "main", "logs", "sys_info", "wifi", "config", "status_bar", "st_left", "st_alarma", "st_falla", "st_desconexion", "st_tierra", "st_test", "st_extincion", "st_bateria", "st_alimentacion", "st_red", "st_mod_i1", "obj0", "st_mod_i2", "obj1", "st_mod_o1", "obj2", "st_mod_o2", "obj3", "st_autman_box", "st_autman", "main_header", "main_title", "btn_ack", "obj4", "btn_reset", "obj5", "btn_test", "obj6", "btn_config", "obj7", "bars_list", "fault_conn", "obj8", "obj9", "fault_time", "fault_time_icon", "fault_time_txt", "obj10", "logs_back", "obj11", "lista_logs", "obj12", "sys_card", "sys_chip", "sys_fw", "sys_uptime", "sys_reset", "sys_heap", "sys_mem", "sys_lvgl", "sys_flash", "sys_cpu", "sys_temp", "sys_net", "sys_time", "obj13", "obj14", "obj15", "obj16", "sys_sep5", "sys_sep6", "sys_sep7", "sys_sep8", "sys_sep9", "sys_sep10", "sys_sep11", "sys_back", "obj17", "obj18", "obj19", "wifi_ssid", "obj20", "wifi_pass", "wifi_connect", "obj21", "wifi_scan", "obj22", "wifi_scan_spinner", "wifi_scan_lbl", "wifi_status", "wifi_list", "wifi_back", "obj23", "wifi_kb", "wifi_show", "obj24", "obj25", "cfg_wifi", "obj26", "obj27", "cfg_sysinfo", "obj28", "obj29", "cfg_logs", "obj30", "obj31", "cfg_back", "obj32" };
 
 //
 // Event handlers
@@ -563,7 +563,53 @@ void create_screen_main() {
                             lv_obj_set_style_align(obj, LV_ALIGN_LEFT_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_text_color(obj, lv_color_hex(0x856404), LV_PART_MAIN | LV_STATE_DEFAULT);
                             lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
-                            lv_label_set_text_static(obj, "Sin conexion con el micro");
+                            lv_label_set_text_static(obj, "Sin conexion con la central");
+                        }
+                    }
+                }
+                {
+                    // fault_time
+                    lv_obj_t *obj = lv_obj_create(parent_obj);
+                    objects.fault_time = obj;
+                    lv_obj_set_pos(obj, 0, 0);
+                    lv_obj_set_size(obj, 784, 52);
+                    lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+                    lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+                    lv_obj_set_style_bg_color(obj, lv_color_hex(0xfff3cd), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_bg_opa(obj, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_color(obj, lv_color_hex(0xffeeba), LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_border_width(obj, 1, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_radius(obj, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_top(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_bottom(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_left(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    lv_obj_set_style_pad_right(obj, 0, LV_PART_MAIN | LV_STATE_DEFAULT);
+                    {
+                        lv_obj_t *parent_obj = obj;
+                        {
+                            // fault_time_icon
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.fault_time_icon = obj;
+                            lv_obj_set_pos(obj, 8, 0);
+                            lv_obj_set_size(obj, 36, LV_SIZE_CONTENT);
+                            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                            lv_obj_set_style_align(obj, LV_ALIGN_LEFT_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_font(obj, &lv_font_montserrat_32, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_color(obj, lv_color_hex(0xe0a800), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_align(obj, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_label_set_text_static(obj, "");
+                        }
+                        {
+                            // fault_time_txt
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.fault_time_txt = obj;
+                            lv_obj_set_pos(obj, 52, 0);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                            lv_obj_set_style_align(obj, LV_ALIGN_LEFT_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_color(obj, lv_color_hex(0x856404), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_font(obj, &lv_font_montserrat_20, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_label_set_text_static(obj, "Diferencia de hora con la central");
                         }
                     }
                 }

@@ -1,8 +1,8 @@
 # tools
 
-## sim_micro.py — Simulador del micro CDI
+## sim_central.py — Simulador de la central CDI
 
-Simula desde la PC los mensajes JSON que el micro CDI manda al display por UART. Sirve para probar la pantalla Main (spec `specs/001-main-panel`) sin el panel real.
+Simula desde la PC los mensajes JSON que la central CDI manda al display por UART. Sirve para probar la pantalla Main (spec `specs/001-main-panel`) sin el panel real.
 
 ### Requisitos
 
@@ -24,15 +24,17 @@ Simula desde la PC los mensajes JSON que el micro CDI manda al display por UART.
 ### Uso
 
 ```
-python tools/sim_micro.py COM5              # menú interactivo
-python tools/sim_micro.py COM5 --auto 2     # envía el estado cada 2 s, sin menú
-python tools/sim_micro.py COM5 -v           # muestra el JSON de cada envío
-python tools/sim_micro.py COM5 --baud 115200
+python tools/sim_central.py COM5              # menú interactivo
+python tools/sim_central.py COM5 --auto 2     # envía el estado cada 2 s, sin menú
+python tools/sim_central.py COM5 -v           # muestra el JSON de cada envío
+python tools/sim_central.py COM5 --baud 115200
 ```
 
 En Linux/macOS el puerto es `/dev/ttyUSB0`, `/dev/tty.usbserial-…`, etc.
 
-Al conectarse envía el estado completo una vez. En modo menú, además, reenvía `barstatus` cada 3 s en silencio (keepalive) para que el display no marque falta de conexión. Se cambia con `--keepalive SEG` (`0` lo desactiva).
+Al conectarse envía el estado completo una vez.
+
+**Keepalive:** el display pide la hora cada 1 s con `{"cmdGetData":"SSI_TIEMPO"}` y el simulador responde `{"TIEMPO":"2026-11-21T12:21:11-03:00","MAC":"…","TIMESTAMP":N}`. Esa respuesta mantiene el enlace vivo y el display usa el primer `TIMESTAMP` tras arrancar, y luego cada 24 h, para poner su hora (la guarda en NVS); entre resincronizaciones lo compara con su reloj: si difieren más de 5 s muestra la barra "Diferencia de hora con la central" en Main. Opcionalmente `--keepalive SEG` reenvía además `barstatus` cada `SEG` s (por defecto `0`, desactivado).
 
 ### Comandos del menú
 
@@ -54,7 +56,10 @@ Al conectarse envía el estado completo una vez. En modo menú, además, reenví
 | `bad` | Enviar una trama con CRC roto (el display la debe descartar) |
 | `big` | Enviar una trama > 2048 B (el display la debe descartar) |
 | `v` | Verbose on/off |
-| `p` | Pausar o reanudar el keepalive (a los 10 s el display muestra "Sin conexion con el micro") |
+| `p` | Dejar de responder el keepalive o reanudarlo (a los 5 s el display muestra "Sin conexion con la central") |
+| `t` | Enviar `TIEMPO` ahora, sin que lo pida el display |
+| `o <seg>` | Desfasar el `TIMESTAMP` (en segundos) para probar la falla de hora (`o 10` la dispara; `o 0` la quita). Usarlo **después** de que el display arrancó: el primer `TIMESTAMP` pone su hora |
+| `k` | Estado del keepalive: pedidos de hora recibidos, último, pausado y desfase |
 | `q` | Salir |
 
 ### Códigos de estado
@@ -81,7 +86,7 @@ Al conectarse envía el estado completo una vez. En modo menú, además, reenví
 
 ### Respuestas automáticas
 
-El simulador muestra cada trama que manda el display (`<< OK …` o `<< CRC MAL …`) y responde como el micro:
+El simulador muestra cada trama que manda el display (`<< OK …` o `<< CRC MAL …`) y responde como la central:
 
 | Recibe | Responde |
 |--------|----------|
@@ -89,6 +94,7 @@ El simulador muestra cada trama que manda el display (`<< OK …` o `<< CRC MAL 
 | `{"cmdTest":{}}` | `barstatus` con `TEST=true` |
 | `{"cmdReset":{}}` | Todo a normal y envío completo |
 | `{"cmdACK":{}}` | Solo lo muestra |
+| `{"cmdGetData":"SSI_TIEMPO"}` | `{"TIEMPO":"2026-11-21T12:21:11-03:00","MAC":"…","TIMESTAMP":N}` (se muestra cada envío, 1 por segundo; ver `k`) |
 
 ### Formato de trama
 
