@@ -449,8 +449,10 @@ static void enviar_ack_cb(lv_event_t *e)
 static void do_reset(void *arg)
 {
     (void)arg;
-    if (uart_send_json("{\"cmdReset\":{}}"))
+    if (uart_send_json("{\"cmdReset\":{}}")) {
+        panel_ui_set_unknown();          /* gris hasta el próximo estado (como el widget) */
         panel_ui_notice("Enviado", "Reset enviado correctamente");
+    }
     else
         panel_ui_notice("Error", "Error enviando comando");
 }

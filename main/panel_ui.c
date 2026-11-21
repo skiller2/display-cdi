@@ -45,6 +45,16 @@ typedef struct {
     const char  *icon;   /* LV_SYMBOL_* */
 } bar_look_t;
 
+/* Fondo de la pantalla Main según el peor estado (getSystemColor del widget).
+ * Degradé = .cdi-main.red/.orange/.yellow/.green del CSS del widget. */
+static const struct { uint32_t top, bottom; } SYS_COLORS[] = {
+    [C_RED]    = { 0xe35d5b, 0xdc3545 },
+    [C_ORANGE] = { 0xff9233, 0xfd7e14 },
+    [C_YELLOW] = { 0xffe066, 0xf5c000 },
+    [C_GREEN]  = { 0x2ecc71, 0x198754 },
+};
+#define SYS_COLOR_UNKNOWN 0x808080   /* .cdi-main.unknown: gris */
+
 /* Códigos de estado válidos para líneas (ver TXT_STATUS). Otros se ignoran. */
 static bool line_status_known(int st)
 {
@@ -275,6 +285,72 @@ static void add_status_items(const panel_status_t *s)
     }
 }
 
+/* ---- Color del sistema y estado normalizado ------------------------------ */
+static bool s_reset_pending;   /* se envió Reset: gris hasta el próximo dato */
+
+static bool system_unknown(const panel_model_t *m)
+{
+    return s_reset_pending || !m->status.valid;
+}
+
+/* Fondo de Main: gris si desconocido; si no, el color de la peor barra
+ * (rojo > naranja > amarillo > verde); sin barras = verde. */
+static void apply_system_color(const panel_model_t *m)
+{
+    if (!objects.main) return;
+    uint32_t top = SYS_COLOR_UNKNOWN, bottom = SYS_COLOR_UNKNOWN;
+    if (!system_unknown(m)) {
+        bar_color_t worst = C_GREEN;
+        for (int i = 0; i < s_n_items; i++)
+            if (color_prio(s_items[i].look.color) < color_prio(worst)) worst = s_items[i].look.color;
+        top = SYS_COLORS[worst].top;
+        bottom = SYS_COLORS[worst].bottom;
+    }
+    lv_obj_set_style_bg_color(objects.main, lv_color_hex(top), 0);
+    lv_obj_set_style_bg_grad_color(objects.main, lv_color_hex(bottom), 0);
+    lv_obj_set_style_bg_grad_dir(objects.main, LV_GRAD_DIR_VER, 0);
+}
+
+/* Sin barras: nombre de la instalación y "Equipo normalizado" centrados
+ * (normalized-info del widget; el texto solo si el estado es conocido). */
+static void normalized_create(lv_obj_t *list, bool unknown)
+{
+    lv_obj_t *box = lv_obj_create(list);
+    lv_obj_remove_style_all(box);
+    lv_obj_set_size(box, LV_PCT(100), 300);
+    lv_obj_set_flex_flow(box, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(box, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(box, 6, 0);
+    lv_obj_add_flag(box, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+    lv_obj_t *n = lv_label_create(box);
+    lv_obj_set_style_text_font(n, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_color(n, lv_color_white(), 0);
+    lv_label_set_text(n, TXT_INSTALL_NAME);
+
+    if (!unknown) {
+        lv_obj_t *t = lv_label_create(box);
+        lv_obj_set_style_text_font(t, &lv_font_montserrat_20, 0);
+        lv_obj_set_style_text_color(t, lv_color_hex(0xbadbcc), 0);
+        lv_label_set_text(t, TXT_NORMALIZED);
+    }
+}
+
+void panel_ui_set_unknown(void)
+{
+    s_reset_pending = true;
+    const panel_model_t *m = panel_model_get();
+    apply_system_color(m);
+    if (s_n_items == 0 && objects.bars_list) {
+        /* rearmar la vista normalizada sin el texto "Equipo normalizado" */
+        for (int i = (int)lv_obj_get_child_count(objects.bars_list) - 1; i >= 0; i--) {
+            lv_obj_t *c = lv_obj_get_child(objects.bars_list, i);
+            if (c != objects.fault_conn && c != objects.fault_time) lv_obj_delete(c);
+        }
+        normalized_create(objects.bars_list, true);
+    }
+}
+
 /* Borra todas las barras de bars_list menos fault_conn/fault_time y las vuelve a crear */
 static void refresh_bars(const panel_model_t *m)
 {
@@ -316,6 +392,8 @@ static void refresh_bars(const panel_model_t *m)
     qsort(s_items, s_n_items, sizeof(s_items[0]), cmp_items);
     for (int i = 0; i < s_n_items; i++)
         bar_create_text(list, &s_items[i].look, s_items[i].title, s_items[i].text);
+    if (s_n_items == 0) normalized_create(list, system_unknown(m));
+    apply_system_color(m);
 
     check_input_notices(m);
 }
@@ -352,6 +430,7 @@ static void refresh_timer_cb(lv_timer_t *t)
 
     if (m->version == drawn) return;     /* sin cambios */
     drawn = m->version;
+    s_reset_pending = false;             /* llegó dato nuevo tras un Reset */
     if (m->status.valid) refresh_status(&m->status);
     /* La lista incluye el estado general: se rearma con cualquier cambio */
     refresh_bars(m);

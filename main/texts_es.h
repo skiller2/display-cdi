@@ -6,6 +6,10 @@
 #define TXT_INPUT_NAME  "Entrada "
 #define TXT_SERVER_CONN "Sin conexion con la central"
 
+/* Sin barras (estado normal), como normalized-info del widget */
+#define TXT_INSTALL_NAME "CDI"                  /* el widget usa cfgGeneral.NAME; default "CDI" */
+#define TXT_NORMALIZED   "Equipo normalizado"
+
 /* Barras de estado general (barstatus) en bars_list: título + texto,
  * iguales a updateStatusBarIcons() del widget (cdi/widget) */
 #define TXT_ST_FALLA       "Falla"
